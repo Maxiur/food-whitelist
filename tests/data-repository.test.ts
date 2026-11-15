@@ -24,20 +24,20 @@ describe('explicit local preview repository', () => {
 
   it('rejects failed persistence instead of reporting a successful save', async () => {
     const repo = createDemoRepository({ storage: { getItem: () => null, setItem: () => { throw new Error('Quota exceeded'); } } });
-    await expect(repo.create(input)).rejects.toThrow('Changes were not saved');
+    await expect(repo.create(input)).rejects.toThrow('Zmiany nie zostały zapisane');
   });
 
   it('does not overwrite malformed stored data', async () => {
     const storage = memoryStorage();
     storage.setItem(DEMO_STORAGE_KEY, '{broken');
     const repo = createDemoRepository({ storage });
-    await expect(repo.create(input)).rejects.toThrow('Cannot read');
+    await expect(repo.create(input)).rejects.toThrow('Nie można odczytać');
     expect(storage.getItem(DEMO_STORAGE_KEY)).toBe('{broken');
   });
 
   it('reports stale mutations instead of success', async () => {
     const repo = createDemoRepository({ storage: memoryStorage() });
-    await expect(repo.remove('already-deleted')).rejects.toThrow('Entry not found');
-    await expect(repo.update('already-deleted', input)).rejects.toThrow('Entry not found');
+    await expect(repo.remove('already-deleted')).rejects.toThrow('Nie znaleziono wpisu');
+    await expect(repo.update('already-deleted', input)).rejects.toThrow('Nie znaleziono wpisu');
   });
 });

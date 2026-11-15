@@ -1,6 +1,6 @@
 # Food Whitelist
 
-A private food preference notebook. Record foods and ingredients, mark them as liked or disliked, and keep useful notes. Responsive English interface for desktop and mobile.
+A private food preference notebook. Record foods and ingredients, mark them as liked or disliked, and keep useful notes. Responsive Polish interface for desktop and mobile, with English project documentation.
 
 ## Features
 

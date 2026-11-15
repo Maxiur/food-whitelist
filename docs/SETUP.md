@@ -17,7 +17,7 @@ The migration creates a private allowlist and a food_preferences table with RLS.
 2. The account remains on the access-pending screen until approved.
 3. Find its exact user ID in Neon Auth Users. Confirm its email is verified and belongs to the intended owner.
 4. Use [002_set_owner.example.sql](../database/002_set_owner.example.sql) in the SQL Editor, replacing the placeholder in a private copy. Do not commit the populated script.
-5. Select **Check access again** in the application.
+5. Select **Sprawdź dostęp ponownie** (check access again) in the application.
 
 The bootstrap refuses to replace an existing owner. Additional accounts cannot read or write notebook entries. Shared Neon email delivery is used for initial setup; consult the [Neon production checklist](https://neon.com/docs/auth/production-checklist) before relying on production email delivery.
 

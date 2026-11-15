@@ -1,34 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowDownToLine, ArrowUpRight, BookOpen, Check, CheckCheck, ChevronDown, Cloud, Coffee, Cookie, Heart, Leaf, LoaderCircle, LockKeyhole, LogOut, MessageCircle, Pencil, Plus, RefreshCw, Search, Sprout, Trash2, Utensils, Wheat, X } from 'lucide-react';
-import { FOOD_CATEGORIES, type FoodCategory, type FoodEntry, type FoodInput, type NotebookProps, type Preference } from '../lib/types';
+import { ArrowDownToLine, ArrowUpRight, BookOpen, Check, CheckCheck, ChevronDown, Cloud, Coffee, Cookie, Leaf, LoaderCircle, LockKeyhole, LogOut, MessageCircle, Pencil, Plus, RefreshCw, Search, Sprout, Trash2, Utensils, Wheat, X } from 'lucide-react';
+import { normalizeSearch } from '../lib/validation';
+import { CATEGORY_LABELS, FOOD_CATEGORIES, type FoodCategory, type FoodEntry, type FoodInput, type NotebookProps, type Preference } from '../lib/types';
 
-const categoryIcons = { Vegetables: Sprout, Fruit: Leaf, Meals: Utensils, Desserts: Cookie, Drinks: Coffee, Snacks: Wheat, Other: Heart };
+const categoryIcons = { Vegetables: Sprout, Fruit: Leaf, Meals: Utensils, Desserts: Cookie, Drinks: Coffee, Snacks: Wheat, Other: Check };
 const blankEntry = (): FoodInput => ({ name: '', preference: 'like', category: 'Other', notes: '' });
-const normalize = (value: string) => value.toLocaleLowerCase('pl').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l');
-const messageOf = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+const messageOf = (error: unknown) => error instanceof Error ? error.message : 'Coś poszło nie tak. Spróbuj ponownie.';
 
-function FoodIllustration() {
-  return <svg className="food-illustration" viewBox="0 0 320 245" fill="none" aria-hidden="true">
-    <ellipse cx="159" cy="201" rx="112" ry="17" fill="#e9e6d9" />
-    <path d="M61 142c0-45 46-84 102-84s102 39 102 84-46 64-102 64-102-19-102-64Z" fill="#ede6d5" stroke="#d8cfba" strokeWidth="1.5" />
-    <path d="M77 137c0-38 39-65 86-65s86 27 86 65-39 51-86 51-86-13-86-51Z" fill="#faf8ed" stroke="#d5cdbb" strokeWidth="1.5" />
-    <path d="M102 137c0-26 27-45 61-45s61 19 61 45-27 35-61 35-61-9-61-35Z" stroke="#e1dac9" strokeWidth="1.5" />
-    <path d="M141 118c-15-22-41-26-57-25 1 25 16 44 43 45" fill="#749879" />
-    <path d="M135 131c-13-17-28-25-40-30" stroke="#426451" strokeWidth="1.5" strokeLinecap="round" />
-    <path d="M130 122c-1-30 17-53 33-63 17 25 14 52-8 73" fill="#426451" />
-    <path d="M144 126c6-26 9-42 17-55" stroke="#a0b69a" strokeWidth="1.5" strokeLinecap="round" />
-    <path d="M150 126c15-27 41-33 60-30-3 28-23 44-49 44" fill="#92a581" />
-    <path d="M157 133c16-16 30-25 42-28" stroke="#607958" strokeWidth="1.5" strokeLinecap="round" />
-    <path d="M157 124c-21-5-39 9-39 26 0 23 23 35 42 34 23-1 41-16 40-35-1-18-21-29-43-25Z" fill="#bd7259" />
-    <path d="m158 124-14-8 3 12-13 5 17 2 7 11 4-13 15 1-10-9 7-10-16 9Z" fill="#426451" />
-    <path d="M135 148c-4 8 1 16 8 19" stroke="#dba189" strokeWidth="3" strokeLinecap="round" />
-    <path d="M214 47c9 15 5 32-3 44-10-10-16-29 3-44Z" fill="#92a581" />
-    <path d="m211 91 9-28M65 176l-17 21M49 176l14 20" stroke="#789177" strokeWidth="2" strokeLinecap="round" />
-    <path d="M57 66c-1-6 7-12 12-6 4-7 13-4 13 3 0 9-15 18-15 18s-9-9-10-15Z" stroke="#bb8b70" strokeWidth="1.5" />
-    <path d="m259 106 5-7m-2 17 8 1m-23-19 1-8" stroke="#c6b08b" strokeWidth="2" strokeLinecap="round" />
-    <circle cx="91" cy="47" r="3" fill="#c6b08b" /><circle cx="245" cy="181" r="3" fill="#c6b08b" />
-  </svg>;
-}
 
 function Modal({ title, description, busy, onClose, children, className = '' }: { title: string; description?: string; busy?: boolean; onClose: () => void; children: ReactNode; className?: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -37,8 +15,8 @@ function Modal({ title, description, busy, onClose, children, className = '' }: 
     onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}
     onClick={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
     <div className="modal-inner">
-      <button type="button" className="icon-button modal-close" aria-label="Close dialog" onClick={onClose} disabled={busy}><X size={21} /></button>
-      <p className="eyebrow">A DETAIL WORTH KEEPING</p>
+      <button type="button" className="icon-button modal-close" aria-label="Zamknij okno" onClick={onClose} disabled={busy}><X size={21} /></button>
+      <p className="eyebrow">SZCZEGÓŁY WPISU</p>
       <h2 id="dialog-title">{title}</h2>
       {description && <p className="modal-description" id="dialog-description">{description}</p>}
       {children}
@@ -52,23 +30,23 @@ function EntryEditor({ entry, onClose, onSave }: { entry: FoodEntry | null; onCl
   const [error, setError] = useState('');
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!input.name.trim()) { setError('Enter a food or ingredient name.'); return; }
+    if (!input.name.trim()) { setError('Wpisz nazwę potrawy lub składnika.'); return; }
     setError(''); setBusy(true);
     try { await onSave({ ...input, name: input.name.trim(), notes: input.notes.trim() }); }
     catch (failure) { setError(messageOf(failure)); }
     finally { setBusy(false); }
   }
-  return <Modal title={entry ? 'Update the details.' : 'What belongs on the list?'} description="Keep a useful reference for your next meal." busy={busy} onClose={onClose}>
+  return <Modal title={entry ? 'Edytuj wpis' : 'Dodaj do listy'} description="Zapisz preferencję i szczegóły, do których warto wrócić." busy={busy} onClose={onClose}>
     <form onSubmit={submit} className="entry-form">
-      <div className="field"><label htmlFor="food-name">Food or ingredient <span aria-hidden="true">*</span></label><input id="food-name" name="name" autoFocus autoComplete="off" placeholder="E.g. tomatoes, ramen, cheesecake…" value={input.name} onChange={(e) => setInput({ ...input, name: e.target.value })} required maxLength={120} disabled={busy} /></div>
-      <fieldset className="preference-field" disabled={busy}><legend>Preference</legend>
-        <label className={`preference-choice choice-like ${input.preference === 'like' ? 'selected' : ''}`}><input type="radio" name="preference" value="like" checked={input.preference === 'like'} onChange={() => setInput({ ...input, preference: 'like' })} /><Heart size={19} /><span>Like</span>{input.preference === 'like' && <Check size={17} />}</label>
-        <label className={`preference-choice choice-dislike ${input.preference === 'dislike' ? 'selected' : ''}`}><input type="radio" name="preference" value="dislike" checked={input.preference === 'dislike'} onChange={() => setInput({ ...input, preference: 'dislike' })} /><X size={19} /><span>Dislike</span>{input.preference === 'dislike' && <Check size={17} />}</label>
+      <div className="field"><label htmlFor="food-name">Potrawa lub składnik <span aria-hidden="true">*</span></label><input id="food-name" name="name" autoFocus autoComplete="off" placeholder="Np. pomidory, ramen, sernik…" value={input.name} onChange={(e) => setInput({ ...input, name: e.target.value })} required maxLength={120} disabled={busy} /></div>
+      <fieldset className="preference-field" disabled={busy}><legend>Preferencja</legend>
+        <label className={`preference-choice choice-like ${input.preference === 'like' ? 'selected' : ''}`}><input type="radio" name="preference" value="like" checked={input.preference === 'like'} onChange={() => setInput({ ...input, preference: 'like' })} /><Check size={19} /><span>Lubi</span>{input.preference === 'like' && <Check size={17} />}</label>
+        <label className={`preference-choice choice-dislike ${input.preference === 'dislike' ? 'selected' : ''}`}><input type="radio" name="preference" value="dislike" checked={input.preference === 'dislike'} onChange={() => setInput({ ...input, preference: 'dislike' })} /><X size={19} /><span>Nie lubi</span>{input.preference === 'dislike' && <Check size={17} />}</label>
       </fieldset>
-      <div className="field"><label htmlFor="food-category">Category</label><div className="select-wrap"><select id="food-category" value={input.category} onChange={(e) => setInput({ ...input, category: e.target.value as FoodCategory })} disabled={busy}>{FOOD_CATEGORIES.map((category) => <option key={category}>{category}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></div></div>
-      <div className="field"><label htmlFor="food-notes">Notes <span className="optional">optional</span></label><textarea id="food-notes" name="notes" rows={4} placeholder="E.g. great in a sauce, less keen on raw tomatoes." value={input.notes} onChange={(e) => setInput({ ...input, notes: e.target.value })} maxLength={2000} disabled={busy} /><span className="character-count">{input.notes.length} / 2000</span></div>
+      <div className="field"><label htmlFor="food-category">Kategoria</label><div className="select-wrap"><select id="food-category" value={input.category} onChange={(e) => setInput({ ...input, category: e.target.value as FoodCategory })} disabled={busy}>{FOOD_CATEGORIES.map((category) => <option key={category} value={category}>{CATEGORY_LABELS[category]}</option>)}</select><ChevronDown size={16} aria-hidden="true" /></div></div>
+      <div className="field"><label htmlFor="food-notes">Notatki <span className="optional">opcjonalnie</span></label><textarea id="food-notes" name="notes" rows={4} placeholder="Np. w sosie tak, na surowo nie." value={input.notes} onChange={(e) => setInput({ ...input, notes: e.target.value })} maxLength={2000} disabled={busy} /><span className="character-count">{input.notes.length} / 2000</span></div>
       {error && <p className="error-message" role="alert">{error}</p>}
-      <div className="modal-actions"><button type="button" className="button button-secondary" onClick={onClose} disabled={busy}>Cancel</button><button type="submit" className="button button-primary" disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : <Check size={18} />}{busy ? 'Saving…' : entry ? 'Save changes' : 'Save entry'}</button></div>
+      <div className="modal-actions"><button type="button" className="button button-secondary" onClick={onClose} disabled={busy}>Anuluj</button><button type="submit" className="button button-primary" disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : <Check size={18} />}{busy ? 'Zapisywanie…' : entry ? 'Zapisz zmiany' : 'Zapisz wpis'}</button></div>
     </form>
   </Modal>;
 }
@@ -77,9 +55,9 @@ function DeleteDialog({ entry, onClose, onDelete }: { entry: FoodEntry; onClose:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function remove() { setBusy(true); setError(''); try { await onDelete(); } catch (failure) { setError(messageOf(failure)); } finally { setBusy(false); } }
-  return <Modal title="Delete this entry?" description={`„${entry.name}” will be removed from this notebook. This cannot be undone.`} busy={busy} onClose={onClose} className="modal-small">
+  return <Modal title="Usunąć ten wpis?" description={`„${entry.name}” zostanie usunięty z notatnika. Tej operacji nie można cofnąć.`} busy={busy} onClose={onClose} className="modal-small">
     {error && <p className="error-message" role="alert">{error}</p>}
-    <div className="modal-actions"><button autoFocus type="button" className="button button-secondary" onClick={onClose} disabled={busy}>Keep entry</button><button type="button" className="button button-danger" onClick={() => void remove()} disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : <Trash2 size={17} />}{busy ? 'Deleting…' : 'Delete entry'}</button></div>
+    <div className="modal-actions"><button autoFocus type="button" className="button button-secondary" onClick={onClose} disabled={busy}>Zachowaj wpis</button><button type="button" className="button button-danger" onClick={() => void remove()} disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : <Trash2 size={17} />}{busy ? 'Usuwanie…' : 'Usuń wpis'}</button></div>
   </Modal>;
 }
 
@@ -121,8 +99,8 @@ export default function Notebook({ repository, mode, userName, onSignOut }: Note
 
   const counts = useMemo(() => ({ all: entries.length, like: entries.filter((entry) => entry.preference === 'like').length, dislike: entries.filter((entry) => entry.preference === 'dislike').length }), [entries]);
   const visible = useMemo(() => {
-    const needle = normalize(query.trim());
-    return entries.filter((entry) => (preference === 'all' || entry.preference === preference) && (category === 'all' || entry.category === category) && (!needle || normalize(`${entry.name} ${entry.notes} ${entry.category}`).includes(needle))).sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name, 'pl') : b.updatedAt.localeCompare(a.updatedAt) || a.name.localeCompare(b.name, 'pl'));
+    const needle = normalizeSearch(query.trim());
+    return entries.filter((entry) => (preference === 'all' || entry.preference === preference) && (category === 'all' || entry.category === category) && (!needle || normalizeSearch(`${entry.name} ${entry.notes} ${CATEGORY_LABELS[entry.category]}`).includes(needle))).sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name, 'pl') : b.updatedAt.localeCompare(a.updatedAt) || a.name.localeCompare(b.name, 'pl'));
   }, [entries, query, preference, category, sort]);
   const resetFilters = () => { setQuery(''); setPreference('all'); setCategory('all'); };
   async function save(input: FoodInput) {
@@ -134,7 +112,7 @@ export default function Notebook({ repository, mode, userName, onSignOut }: Note
       if (currentRepository.current !== repository) return;
       ++requests.current;
       setLoading(false); setEntries((previous) => selected ? previous.map((item) => item.id === saved.id ? saved : item) : [saved, ...previous.filter((item) => item.id !== saved.id)]);
-      setEditing(undefined); setLastSynced(new Date()); setToast(selected ? 'Changes saved.' : 'Entry saved.');
+      setEditing(undefined); setLastSynced(new Date()); setToast(selected ? 'Zmiany zapisane.' : 'Wpis zapisany.');
     } catch (failure) { setLastSynced(null); throw failure; }
   }
   async function remove() {
@@ -145,7 +123,7 @@ export default function Notebook({ repository, mode, userName, onSignOut }: Note
       await repository.remove(id);
       if (currentRepository.current !== repository) return;
       ++requests.current; setLoading(false); setEntries((previous) => previous.filter((entry) => entry.id !== id));
-      setDeleting(null); setLastSynced(new Date()); setToast('Entry deleted.');
+      setDeleting(null); setLastSynced(new Date()); setToast('Wpis usunięty.');
     } catch (failure) { setLastSynced(null); throw failure; }
   }
   function exportEntries() {
@@ -153,36 +131,36 @@ export default function Notebook({ repository, mode, userName, onSignOut }: Note
     const url = URL.createObjectURL(file);
     const link = document.createElement('a'); link.href = url; link.download = `food-whitelist-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.appendChild(link); link.click(); link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    setToast('Your export is ready to download.');
+    setToast('Eksport jest gotowy do pobrania.');
   }
   async function signOut() { if (!onSignOut) return; setSigningOut(true); try { await onSignOut(); } catch (failure) { setError(messageOf(failure)); } finally { setSigningOut(false); } }
   const canChange = loaded && !error;
 
   return <div className="notebook-shell">
-    <a className="skip-link" href="#notebook-content">Skip to notebook</a>
-    <aside className="sidebar" aria-label="Notebook">
-      <div className="brand"><span className="brand-mark"><Heart size={24} strokeWidth={1.5} /></span><span className="brand-name">Food Whitelist<span>YOUR FOOD PREFERENCE NOTEBOOK</span></span></div>
-      <div className="sidebar-section"><p className="nav-label">YOUR NOTEBOOK</p><div className="nav-current" aria-current="page"><Utensils size={19} /><span>Food</span><span className="nav-count">{loaded ? counts.all : '—'}</span></div></div>
-      <div className="sidebar-note"><span className="small-spark">✳</span><p>Good food.<br />Useful notes.<br /><em>Less guesswork.</em></p></div>
-      <div className="future-sections"><p className="nav-label">ROOM TO GROW</p><div><BookOpen size={18} /><span>Books</span><small>Later</small></div><div><MessageCircle size={18} /><span>General notes</span><small>Later</small></div></div>
-      <div className="sidebar-profile"><span className="profile-avatar">{userName?.trim().slice(0, 1).toLocaleUpperCase('pl') || <LockKeyhole size={18} />}</span><div><strong>{userName || 'Your notebook'}</strong><span>Private workspace</span></div>{onSignOut && <button type="button" className="icon-button" aria-label="Sign out" title="Sign out" onClick={() => void signOut()} disabled={signingOut}>{signingOut ? <LoaderCircle className="spin" size={18} /> : <LogOut size={18} />}</button>}</div>
+    <a className="skip-link" href="#notebook-content">Przejdź do notatnika</a>
+    <aside className="sidebar" aria-label="Notatnik">
+      <div className="brand"><span className="brand-mark"><Utensils size={24} strokeWidth={1.5} /></span><span className="brand-name">Food Whitelist<span>NOTATNIK SMAKÓW</span></span></div>
+      <div className="sidebar-section"><p className="nav-label">TWÓJ NOTATNIK</p><div className="nav-current" aria-current="page"><Utensils size={19} /><span>Jedzenie</span><span className="nav-count">{loaded ? counts.all : '—'}</span></div></div>
+      <div className="sidebar-note"><span className="small-spark">[01]</span><p>Zapisz.<br />Sprawdź.<br /><em>Wybierz.</em></p></div>
+      <div className="future-sections"><p className="nav-label">W PRZYSZŁOŚCI</p><div><BookOpen size={18} /><span>Książki</span><small>Wkrótce</small></div><div><MessageCircle size={18} /><span>Notatki</span><small>Wkrótce</small></div></div>
+      <div className="sidebar-profile"><span className="profile-avatar">{userName?.trim().slice(0, 1).toLocaleUpperCase('pl') || <LockKeyhole size={18} />}</span><div><strong>{userName || 'Twój notatnik'}</strong><span>Prywatny dostęp</span></div>{onSignOut && <button type="button" className="icon-button" aria-label="Wyloguj się" title="Wyloguj się" onClick={() => void signOut()} disabled={signingOut}>{signingOut ? <LoaderCircle className="spin" size={18} /> : <LogOut size={18} />}</button>}</div>
     </aside>
     <main className="main-content" id="notebook-content">
-      <header className="topbar"><span className="topbar-location"><span>Notebook</span><span className="location-separator">/</span>Food</span><span className={`sync-status ${error ? 'sync-error' : ''}`} aria-live="polite">{loading ? <><LoaderCircle className="spin" size={14} />Loading…</> : error ? <><Cloud size={15} />Connection unavailable</> : mode === 'demo' ? <><LockKeyhole size={14} />Local preview</> : lastSynced ? <><CheckCheck size={15} />Saved to cloud</> : <><Cloud size={15} />Waiting for connection</>}</span></header>
-      {mode === 'demo' && <div className="demo-banner"><span><strong>Local preview</strong> — entries stay on this device.</span><span>Preview data is not saved to Neon.</span></div>}
-      <section className="hero" aria-labelledby="page-title"><div className="hero-copy"><p className="eyebrow"><span className="eyebrow-dash" />YOUR TASTE, ORGANIZED</p><h1 id="page-title">Good food,<br /><em>worth remembering.</em></h1><p>Favorites. Ingredients to avoid.<br />And all the details in between.</p><span className="hero-footnote"><Heart size={14} /> A little clarity for your next meal</span></div><div className="hero-art"><FoodIllustration /><span>a pinch of good taste</span></div></section>
+      <header className="topbar"><span className="topbar-location"><span>Notatnik</span><span className="location-separator">/</span>Jedzenie</span><span className={`sync-status ${error ? 'sync-error' : ''}`} aria-live="polite">{loading ? <><LoaderCircle className="spin" size={14} />Wczytywanie…</> : error ? <><Cloud size={15} />Brak połączenia</> : mode === 'demo' ? <><LockKeyhole size={14} />Podgląd lokalny</> : lastSynced ? <><CheckCheck size={15} />Zapisano w chmurze</> : <><Cloud size={15} />Oczekiwanie na połączenie</>}</span></header>
+      {mode === 'demo' && <div className="demo-banner"><span><strong>Podgląd lokalny</strong> — wpisy pozostają na tym urządzeniu.</span><span>Dane z podglądu nie trafiają do chmury.</span></div>}
+      <section className="hero" aria-labelledby="page-title"><div className="hero-copy"><p className="eyebrow"><span className="eyebrow-dash" />PREFERENCJE W JEDNYM MIEJSCU</p><h1 id="page-title">Mniej zgadywania.<br /><em>Więcej smaku.</em></h1><p>Co lubi, czego unika i jak to przyrządzić.<br />Konkretna lista na kolejny posiłek.</p><span className="hero-footnote"><Check size={14} /> Zapisuj raz. Wracaj, kiedy potrzebujesz.</span></div><div className="hero-summary" aria-label="Podsumowanie preferencji"><span className="summary-index">01 / JEDZENIE</span><div><span>LUBI</span><strong>{loaded ? counts.like.toString().padStart(2, '0') : '—'}</strong><Check size={23} /></div><div><span>NIE LUBI</span><strong>{loaded ? counts.dislike.toString().padStart(2, '0') : '—'}</strong><X size={23} /></div></div></section>
       <section className="food-section" aria-labelledby="food-title">
-        <div className="section-header"><div><p className="eyebrow">YOUR EVERYDAY REFERENCE</p><h2 id="food-title">On the list<span className="heading-dot">.</span></h2></div><button type="button" className="button button-primary add-button" onClick={() => setEditing(null)} disabled={!canChange}><Plus size={19} /><span>Add an entry</span></button></div>
-        <div className="filter-panel"><div className="search-field"><Search size={18} aria-hidden="true" /><label className="sr-only" htmlFor="search-food">Search notebook</label><input id="search-food" type="search" placeholder="Search food, ingredients, notes…" value={query} onChange={(e) => setQuery(e.target.value)} /></div><div className="select-wrap category-select"><label className="sr-only" htmlFor="filter-category">Filter by category</label><select id="filter-category" value={category} onChange={(e) => setCategory(e.target.value as 'all' | FoodCategory)}><option value="all">All categories</option>{FOOD_CATEGORIES.map((value) => <option key={value}>{value}</option>)}</select><ChevronDown size={15} aria-hidden="true" /></div></div>
-        <div className="list-toolbar"><div className="filter-tabs" role="group" aria-label="Filter preferences">{([['all', 'All entries'], ['like', 'Like'], ['dislike', 'Dislike']] as const).map(([value, label]) => <button type="button" key={value} className={`filter-tab ${preference === value ? 'active' : ''} tab-${value}`} aria-pressed={preference === value} onClick={() => setPreference(value)}>{value === 'like' && <Heart size={14} />}{value === 'dislike' && <X size={14} />}<span>{label}</span><span className="tab-count">{loaded ? counts[value] : '—'}</span></button>)}</div><div className="list-tools"><div className="select-wrap sort-select"><label className="sr-only" htmlFor="sort-food">Sort entries</label><select id="sort-food" value={sort} onChange={(e) => setSort(e.target.value as 'updated' | 'name')}><option value="updated">Recently updated</option><option value="name">Alphabetical</option></select><ChevronDown size={14} aria-hidden="true" /></div><button type="button" className="icon-button" aria-label="Refresh entries" title="Refresh entries" disabled={loading} onClick={() => void load()}><RefreshCw size={16} className={loading ? 'spin' : ''} /></button><button type="button" className="icon-button" aria-label="Export all entries as JSON" title="Download all entries (.json)" disabled={!entries.length || loading || !!error} onClick={exportEntries}><ArrowDownToLine size={17} /></button></div></div>
-        {error && <div className="load-error" role="alert"><div><strong>Could not load the notebook.</strong><p>{error}</p>{loaded && <p>These entries are from the last successful refresh.</p>}</div><button type="button" className="button button-secondary" onClick={() => void load()} disabled={loading}><RefreshCw size={16} />Try again</button></div>}
-        {loading && !loaded ? <div className="loading-state" role="status"><LoaderCircle size={24} className="spin" /><p>Otwieram Your notebook…</p></div> : loaded && entries.length === 0 ? <div className="empty-state"><div className="empty-symbol"><Sprout size={37} strokeWidth={1.2} /><span>01</span></div><p className="eyebrow">START WITH SOMETHING SIMPLE</p><h3>A good list starts with one entry.</h3><p>A favorite meal? An ingredient to avoid?<br />Keep the details handy for next time.</p><button type="button" className="button button-text" onClick={() => setEditing(null)} disabled={!canChange}>Add your first entry <ArrowUpRight size={18} /></button></div> : loaded && visible.length === 0 ? <div className="empty-state empty-filter"><Search size={30} strokeWidth={1.4} /><h3>Nothing on the list just yet.</h3><p>Try another search or clear the filters.</p><button type="button" className="button button-secondary" onClick={resetFilters}>Clear filters</button></div> : <div className="food-grid">{visible.map((entry) => {
-          const Icon = categoryIcons[entry.category] || Heart;
-          return <article className={`food-card food-card-${entry.preference}`} key={entry.id}><div className="card-topline"><span className="category-icon"><Icon size={21} strokeWidth={1.5} /></span><span className={`preference-badge badge-${entry.preference}`}>{entry.preference === 'like' ? <Heart size={12} /> : <X size={12} />}{entry.preference === 'like' ? 'Like' : 'Dislike'}</span></div><p className="card-category">{entry.category}</p><h3>{entry.name}</h3>{entry.notes ? <p className="card-notes">{entry.notes}</p> : <p className="card-notes card-no-notes">No additional notes.</p>}<footer className="card-footer"><span title={`Last updated: ${new Date(entry.updatedAt).toLocaleString('en-GB')}`}>{new Date(entry.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span><div><button type="button" className="icon-button" aria-label={`Edit: ${entry.name}`} title="Edit entry" onClick={() => setEditing(entry)} disabled={!canChange}><Pencil size={16} /></button><button type="button" className="icon-button delete-icon" aria-label={`Delete: ${entry.name}`} title="Delete entry" onClick={() => setDeleting(entry)} disabled={!canChange}><Trash2 size={16} /></button></div></footer></article>;
+        <div className="section-header"><div><p className="eyebrow">TWOJA BAZA</p><h2 id="food-title">Lista smaków<span className="heading-dot">.</span></h2></div><button type="button" className="button button-primary add-button" onClick={() => setEditing(null)} disabled={!canChange}><Plus size={19} /><span>Dodaj wpis</span></button></div>
+        <div className="filter-panel"><div className="search-field"><Search size={18} aria-hidden="true" /><label className="sr-only" htmlFor="search-food">Przeszukaj notatnik</label><input id="search-food" type="search" placeholder="Szukaj potraw, składników, notatek…" value={query} onChange={(e) => setQuery(e.target.value)} /></div><div className="select-wrap category-select"><label className="sr-only" htmlFor="filter-category">Filtruj według kategorii</label><select id="filter-category" value={category} onChange={(e) => setCategory(e.target.value as 'all' | FoodCategory)}><option value="all">Wszystkie kategorie</option>{FOOD_CATEGORIES.map((value) => <option key={value} value={value}>{CATEGORY_LABELS[value]}</option>)}</select><ChevronDown size={15} aria-hidden="true" /></div></div>
+        <div className="list-toolbar"><div className="filter-tabs" role="group" aria-label="Filtruj preferencje">{([['all', 'Wszystkie'], ['like', 'Lubi'], ['dislike', 'Nie lubi']] as const).map(([value, label]) => <button type="button" key={value} className={`filter-tab ${preference === value ? 'active' : ''} tab-${value}`} aria-pressed={preference === value} onClick={() => setPreference(value)}>{value === 'like' && <Check size={14} />}{value === 'dislike' && <X size={14} />}<span>{label}</span><span className="tab-count">{loaded ? counts[value] : '—'}</span></button>)}</div><div className="list-tools"><div className="select-wrap sort-select"><label className="sr-only" htmlFor="sort-food">Sortuj wpisy</label><select id="sort-food" value={sort} onChange={(e) => setSort(e.target.value as 'updated' | 'name')}><option value="updated">Ostatnio zmienione</option><option value="name">Alfabetycznie</option></select><ChevronDown size={14} aria-hidden="true" /></div><button type="button" className="icon-button" aria-label="Odśwież wpisy" title="Odśwież wpisy" disabled={loading} onClick={() => void load()}><RefreshCw size={16} className={loading ? 'spin' : ''} /></button><button type="button" className="icon-button" aria-label="Eksportuj wszystkie wpisy do JSON" title="Pobierz wszystkie wpisy (.json)" disabled={!entries.length || loading || !!error} onClick={exportEntries}><ArrowDownToLine size={17} /></button></div></div>
+        {error && <div className="load-error" role="alert"><div><strong>Nie udało się wczytać notatnika.</strong><p>{error}</p>{loaded && <p>To wpisy z ostatniego udanego odświeżenia.</p>}</div><button type="button" className="button button-secondary" onClick={() => void load()} disabled={loading}><RefreshCw size={16} />Spróbuj ponownie</button></div>}
+        {loading && !loaded ? <div className="loading-state" role="status"><LoaderCircle size={24} className="spin" /><p>Otwieranie notatnika…</p></div> : loaded && entries.length === 0 ? <div className="empty-state"><div className="empty-symbol"><Sprout size={37} strokeWidth={1.2} /><span>01</span></div><p className="eyebrow">PIERWSZY KROK</p><h3>Pierwszy wpis robi różnicę.</h3><p>Ulubione danie? Składnik do pominięcia?<br />Zapisz i miej to z głowy.</p><button type="button" className="button button-text" onClick={() => setEditing(null)} disabled={!canChange}>Dodaj pierwszy wpis <ArrowUpRight size={18} /></button></div> : loaded && visible.length === 0 ? <div className="empty-state empty-filter"><Search size={30} strokeWidth={1.4} /><h3>Brak pasujących wpisów.</h3><p>Zmień zapytanie albo wyczyść filtry.</p><button type="button" className="button button-secondary" onClick={resetFilters}>Wyczyść filtry</button></div> : <div className="food-grid">{visible.map((entry) => {
+          const Icon = categoryIcons[entry.category] || Check;
+          return <article className={`food-card food-card-${entry.preference}`} key={entry.id}><div className="card-topline"><span className="category-icon"><Icon size={21} strokeWidth={1.5} /></span><span className={`preference-badge badge-${entry.preference}`}>{entry.preference === 'like' ? <Check size={12} /> : <X size={12} />}{entry.preference === 'like' ? 'Lubi' : 'Nie lubi'}</span></div><p className="card-category">{CATEGORY_LABELS[entry.category]}</p><h3>{entry.name}</h3>{entry.notes ? <p className="card-notes">{entry.notes}</p> : <p className="card-notes card-no-notes">Bez dodatkowych notatek.</p>}<footer className="card-footer"><span title={`Ostatnia zmiana: ${new Date(entry.updatedAt).toLocaleString('pl-PL')}`}>{new Date(entry.updatedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}</span><div><button type="button" className="icon-button" aria-label={`Edytuj: ${entry.name}`} title="Edytuj wpis" onClick={() => setEditing(entry)} disabled={!canChange}><Pencil size={16} /></button><button type="button" className="icon-button delete-icon" aria-label={`Usuń: ${entry.name}`} title="Usuń wpis" onClick={() => setDeleting(entry)} disabled={!canChange}><Trash2 size={16} /></button></div></footer></article>;
         })}</div>}
-        {loaded && entries.length > 0 && <p className="results-note">Showing {visible.length} of {entries.length} entries <span>·</span> All the useful details, together.</p>}
+        {loaded && entries.length > 0 && <p className="results-note">Widoczne wpisy: {visible.length} z {entries.length} <span>·</span> Wszystkie szczegóły pod ręką.</p>}
       </section>
-      <footer className="page-footer"><span>Food Whitelist<span className="footer-dot">·</span>Your food preference notebook</span><span><LockKeyhole size={12} />{mode === 'cloud' ? 'Private to you' : 'Local preview'}</span></footer>
+      <footer className="page-footer"><span>Food Whitelist<span className="footer-dot">·</span>Twój notatnik smaków</span><span><LockKeyhole size={12} />{mode === 'cloud' ? 'Tylko dla Ciebie' : 'Podgląd lokalny'}</span></footer>
     </main>
     {editing !== undefined && <EntryEditor key={editing?.id || 'new'} entry={editing} onClose={() => setEditing(undefined)} onSave={save} />}
     {deleting && <DeleteDialog entry={deleting} onClose={() => setDeleting(null)} onDelete={remove} />}

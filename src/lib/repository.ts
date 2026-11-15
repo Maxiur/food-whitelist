@@ -8,24 +8,24 @@ export const DEMO_STORAGE_KEY = 'food-whitelist:demo:food:v1';
 export async function hasNotebookAccess(client: AppNeonClient): Promise<boolean> {
   const { data, error } = await client.rpc('has_notebook_access');
   databaseError(error);
-  if (typeof data !== 'boolean') throw new Error('Could not verify notebook access.');
+  if (typeof data !== 'boolean') throw new Error('Nie udało się sprawdzić dostępu do notatnika.');
   return data;
 }
 
 function validEntry(value: unknown): FoodEntry {
-  if (!value || typeof value !== 'object') throw new Error('Invalid stored entry.');
+  if (!value || typeof value !== 'object') throw new Error('Zapisany wpis ma nieprawidłowy format.');
   const record = value as Record<string, unknown>;
   const fields = validateFoodInput(record);
   if (typeof record.id !== 'string' || !record.id ||
       typeof record.createdAt !== 'string' || !Number.isFinite(Date.parse(record.createdAt)) ||
       typeof record.updatedAt !== 'string' || !Number.isFinite(Date.parse(record.updatedAt))) {
-    throw new Error('Invalid stored entry.');
+    throw new Error('Zapisany wpis ma nieprawidłowy format.');
   }
   return { ...fields, id: record.id, createdAt: record.createdAt, updatedAt: record.updatedAt };
 }
 
 function fromRow(row: unknown): FoodEntry {
-  if (!row || typeof row !== 'object') throw new Error('The database returned an invalid entry.');
+  if (!row || typeof row !== 'object') throw new Error('Baza zwróciła wpis w nieprawidłowym formacie.');
   const value = row as Record<string, unknown>;
   return validEntry({ ...value, createdAt: value.created_at, updatedAt: value.updated_at });
 }
@@ -33,19 +33,19 @@ function fromRow(row: unknown): FoodEntry {
 function databaseError(error: { code?: string; message?: string } | null): void {
   if (!error) return;
   if (error.code === '42501') {
-    throw new Error('This account does not have access to this notebook.');
+    throw new Error('To konto nie ma dostępu do notatnika.');
   }
   if (error.code === 'PGRST301' || error.code === 'PGRST302') {
-    throw new Error('Your session has expired. Please sign in again.');
+    throw new Error('Sesja wygasła. Zaloguj się ponownie.');
   }
-  if (error.code === '23505') throw new Error('This entry already exists. Refresh the list.');
+  if (error.code === '23505') throw new Error('Ten wpis już istnieje. Odśwież listę.');
   // Do not leak raw database responses, which can include row contents.
-  throw new Error('Could not connect to the database. Check your connection and try again.');
+  throw new Error('Nie udało się połączyć z bazą. Sprawdź połączenie i spróbuj ponownie.');
 }
 
 /** SQL RLS is the authorization boundary; the explicit owner filter is extra defense. */
 export function createCloudRepository(client: AppNeonClient, ownerId: string): FoodRepository {
-  if (!ownerId) throw new Error('Sign in to open the notebook.');
+  if (!ownerId) throw new Error('Zaloguj się, aby otworzyć notatnik.');
   return {
     async list() {
       const rows: FoodEntry[] = [];
@@ -56,7 +56,7 @@ export function createCloudRepository(client: AppNeonClient, ownerId: string): F
           .eq('owner_id', ownerId).order('created_at', { ascending: false })
           .order('id', { ascending: true }).range(offset, offset + pageSize - 1);
         databaseError(error);
-        if (!Array.isArray(data)) throw new Error('The database did not return a list of entries.');
+        if (!Array.isArray(data)) throw new Error('Baza nie zwróciła listy wpisów.');
         rows.push(...data.map(fromRow));
         if (data.length < pageSize) return rows;
       }
@@ -66,7 +66,7 @@ export function createCloudRepository(client: AppNeonClient, ownerId: string): F
       const { data, error } = await client.from('food_preferences')
         .insert({ ...fields, owner_id: ownerId }).select(COLUMNS).single();
       databaseError(error);
-      if (!data) throw new Error('The database did not confirm that this entry was saved.');
+      if (!data) throw new Error('Baza nie potwierdziła zapisu wpisu.');
       return fromRow(data);
     },
     async update(id, input) {
@@ -74,7 +74,7 @@ export function createCloudRepository(client: AppNeonClient, ownerId: string): F
       const { data, error } = await client.from('food_preferences')
         .update(fields).eq('id', id).eq('owner_id', ownerId).select(COLUMNS).single();
       databaseError(error);
-      if (!data) throw new Error('Entry not found. Refresh the list and try again.');
+      if (!data) throw new Error('Nie znaleziono wpisu. Odśwież listę i spróbuj ponownie.');
       return fromRow(data);
     },
     async remove(id) {
@@ -82,7 +82,7 @@ export function createCloudRepository(client: AppNeonClient, ownerId: string): F
         .delete().eq('id', id).eq('owner_id', ownerId).select('id');
       databaseError(error);
       if (!Array.isArray(data) || data.length !== 1) {
-        throw new Error('Deletion was not confirmed. Refresh the list.');
+        throw new Error('Usunięcie nie zostało potwierdzone. Odśwież listę.');
       }
     },
   };
@@ -108,14 +108,14 @@ export function createDemoRepository(options: DemoOptions = {}): FoodRepository 
       if (!Array.isArray(decoded)) throw new Error('Invalid local format');
       return decoded.map(validEntry);
     } catch {
-      throw new Error('Cannot read local preview data. Check browser storage access.');
+      throw new Error('Nie można odczytać danych podglądu. Sprawdź dostęp do pamięci przeglądarki.');
     }
   }
   function write(entries: FoodEntry[]) {
     try {
       storage().setItem(DEMO_STORAGE_KEY, JSON.stringify(entries));
     } catch {
-      throw new Error('Changes were not saved. Browser storage is unavailable or full.');
+      throw new Error('Zmiany nie zostały zapisane. Pamięć przeglądarki jest niedostępna lub pełna.');
     }
   }
   return {
@@ -132,7 +132,7 @@ export function createDemoRepository(options: DemoOptions = {}): FoodRepository 
       const fields = validateFoodInput(input);
       const entries = read();
       const index = entries.findIndex(entry => entry.id === id);
-      if (index < 0) throw new Error('Entry not found. Refresh the list.');
+      if (index < 0) throw new Error('Nie znaleziono wpisu. Odśwież listę.');
       const updated = { ...entries[index], ...fields, updatedAt: now().toISOString() };
       entries[index] = updated;
       write(entries);
@@ -140,7 +140,7 @@ export function createDemoRepository(options: DemoOptions = {}): FoodRepository 
     },
     async remove(id) {
       const entries = read();
-      if (!entries.some(entry => entry.id === id)) throw new Error('Entry not found. Refresh the list.');
+      if (!entries.some(entry => entry.id === id)) throw new Error('Nie znaleziono wpisu. Odśwież listę.');
       write(entries.filter(entry => entry.id !== id));
     },
   };

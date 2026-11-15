@@ -10,24 +10,24 @@ export class InputValidationError extends Error {
 /** Validate untrusted form/import data before either local or remote persistence. */
 export function validateFoodInput(value: unknown): FoodInput {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new InputValidationError('Invalid entry format.');
+    throw new InputValidationError('Nieprawidłowy format wpisu.');
   }
   const input = value as Record<string, unknown>;
   if (typeof input.name !== 'string' || !input.name.trim()) {
-    throw new InputValidationError('Enter a food name.', 'name');
+    throw new InputValidationError('Wpisz nazwę potrawy lub składnika.', 'name');
   }
   const name = input.name.trim();
   if (name.length > 120) {
-    throw new InputValidationError('The name can have at most 120 characters.', 'name');
+    throw new InputValidationError('Nazwa może mieć maksymalnie 120 znaków.', 'name');
   }
   if (input.preference !== 'like' && input.preference !== 'dislike') {
-    throw new InputValidationError('Choose Like or Dislike.', 'preference');
+    throw new InputValidationError('Wybierz: lubi lub nie lubi.', 'preference');
   }
   if (typeof input.category !== 'string' || !(FOOD_CATEGORIES as readonly string[]).includes(input.category)) {
-    throw new InputValidationError('Choose a category from the list.', 'category');
+    throw new InputValidationError('Wybierz kategorię z listy.', 'category');
   }
   if (typeof input.notes !== 'string' || input.notes.length > 2000) {
-    throw new InputValidationError('Notes can have at most 2000 characters.', 'notes');
+    throw new InputValidationError('Notatki mogą mieć maksymalnie 2000 znaków.', 'notes');
   }
   return {
     name,

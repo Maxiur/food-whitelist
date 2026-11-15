@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, ArrowRight, Heart, LockKeyhole, Mail, RefreshCw, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Utensils, LockKeyhole, Mail, RefreshCw, ShieldCheck } from 'lucide-react';
 import Notebook from './components/Notebook';
 import { neonClient, type AppNeonClient } from './lib/neon';
 import { createCloudRepository, createDemoRepository, hasNotebookAccess } from './lib/repository';
@@ -7,17 +7,17 @@ import './auth.css';
 
 function AuthShell({ children }: { children: ReactNode }) {
   return <main className="auth-page">
-    <a className="auth-brand" href="./" aria-label="Food Whitelist — home"><span><Heart size={22} /></span> Food Whitelist<span className="auth-brand-dot">.</span></a>
+    <a className="auth-brand" href="./" aria-label="Food Whitelist — strona główna"><span><Utensils size={22} /></span> Food Whitelist<span className="auth-brand-dot">.</span></a>
     <section className="auth-layout">
       <div className="auth-intro">
-        <p className="eyebrow">A LITTLE SPACE FOR GOOD FOOD</p>
-        <h1>Good food.<br />Clear preferences.<br /><em>All in one place.</em></h1>
-        <p>Favorite flavors, ingredients to avoid, and the little details worth remembering.</p>
-        <div className="auth-note"><Heart size={18} /><span>A personal reference for your next meal.</span></div>
+        <p className="eyebrow">TWÓJ NOTATNIK SMAKÓW</p>
+        <h1>Mniej zgadywania.<br /><em>Więcej smaku.</em></h1>
+        <p>Ulubione potrawy, składniki do pominięcia i konkretne notatki. Wszystko pod ręką.</p>
+        <div className="auth-note"><Utensils size={18} /><span>Jedna lista. Łatwiejszy wybór kolejnego posiłku.</span></div>
       </div>
       <div className="auth-card">{children}</div>
     </section>
-    <footer className="auth-footer"><LockKeyhole size={14} /> Your private notebook <span>FOOD WHITELIST · 01</span></footer>
+    <footer className="auth-footer"><LockKeyhole size={14} /> Twój prywatny notatnik <span>FOOD WHITELIST · 01</span></footer>
   </main>;
 }
 
@@ -42,7 +42,7 @@ function Login({ client }: { client: AppNeonClient }) {
       const result = await client.auth.emailOtp.sendVerificationOtp({ email: email.trim(), type: 'sign-in' });
       if (result.error) throw new Error();
       setSent(true); setCooldown(60);
-    } catch { setError('Could not send a code. Check your email address and try again shortly.'); }
+    } catch { setError('Nie udało się wysłać kodu. Sprawdź adres e-mail i spróbuj za chwilę.'); }
     finally { setBusy(false); }
   }
 
@@ -54,26 +54,26 @@ function Login({ client }: { client: AppNeonClient }) {
       const result = await client.auth.signIn.emailOtp({ email: email.trim(), otp: otp.trim() });
       if (result.error) throw new Error();
       setOtp('');
-    } catch { setError('This code is invalid or has expired. Check your email or request a new code.'); }
+    } catch { setError('Kod jest nieprawidłowy lub wygasł. Sprawdź wiadomość albo poproś o nowy kod.'); }
     finally { setBusy(false); }
   }
 
   return <AuthShell>
     <div className="auth-card-icon"><Mail size={25} /></div>
-    <p className="eyebrow">YOUR PRIVATE SPACE</p>
-    <h2>{sent ? 'Check your inbox' : 'Welcome back'}</h2>
-    <p className="auth-caption">{sent ? <>Your sign-in code was sent to <strong>{email}</strong>. Enter it below.</> : 'Sign in with an email code. Keep your food notes together, on every device.'}</p>
+    <p className="eyebrow">DOSTĘP DO NOTATNIKA</p>
+    <h2>{sent ? 'Sprawdź skrzynkę' : 'Zaloguj się'}</h2>
+    <p className="auth-caption">{sent ? <>Kod logowania został wysłany na <strong>{email}</strong>. Wpisz go poniżej.</> : 'Wpisz adres e-mail. Otrzymasz kod, którym otworzysz notatnik na dowolnym urządzeniu.'}</p>
     <form onSubmit={sent ? verifyCode : sendCode} className="auth-form">
-      {!sent ? <label className="field">Email address<input autoComplete="email" inputMode="email" type="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" disabled={busy} /></label> :
-        <label className="field">Email code<input className="otp-input" autoFocus autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" minLength={6} maxLength={6} required value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="000000" disabled={busy} /></label>}
+      {!sent ? <label className="field">Adres e-mail<input autoComplete="email" inputMode="email" type="email" required maxLength={254} value={email} onChange={e => setEmail(e.target.value)} placeholder="ty@example.com" disabled={busy} /></label> :
+        <label className="field">Kod z wiadomości<input className="otp-input" autoFocus autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]{6}" minLength={6} maxLength={6} required value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ''))} placeholder="000000" disabled={busy} /></label>}
       {error && <p className="error-message" role="alert">{error}</p>}
-      <button className="button button-primary auth-submit" disabled={busy || (!sent && cooldown > 0)} type="submit">{busy ? 'One moment…' : sent ? 'Open notebook' : 'Send sign-in code'}<ArrowRight size={18} /></button>
+      <button className="button button-primary auth-submit" disabled={busy || (!sent && cooldown > 0)} type="submit">{busy ? 'Chwileczkę…' : sent ? 'Otwórz notatnik' : 'Wyślij kod logowania'}<ArrowRight size={18} /></button>
     </form>
     {sent && <div className="auth-secondary-actions">
-      <button className="auth-text-button" disabled={busy} onClick={() => { setSent(false); setError(''); setOtp(''); setCooldown(0); }}><ArrowLeft size={14} /> Change email</button>
-      <button className="auth-text-button" disabled={busy || cooldown > 0} onClick={() => void sendCode()}>{cooldown > 0 ? `Resend in ${cooldown} s` : 'Send a new code'}</button>
+      <button className="auth-text-button" disabled={busy} onClick={() => { setSent(false); setError(''); setOtp(''); setCooldown(0); }}><ArrowLeft size={14} /> Zmień adres</button>
+      <button className="auth-text-button" disabled={busy || cooldown > 0} onClick={() => void sendCode()}>{cooldown > 0 ? `Wyślij ponownie za ${cooldown} s` : 'Wyślij nowy kod'}</button>
     </div>}
-    <p className="auth-privacy"><ShieldCheck size={17} /> Notes are accessible only to the approved owner.</p>
+    <p className="auth-privacy"><ShieldCheck size={17} /> Dostęp do wpisów ma tylko zatwierdzony właściciel.</p>
   </AuthShell>;
 }
 
@@ -87,7 +87,7 @@ function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient;
     let cancelled = false;
     setAccess(null); setError('');
     hasNotebookAccess(client).then(value => { if (!cancelled) setAccess(value); }).catch(() => {
-      if (!cancelled) setError('Could not check access. Check your connection and try again.');
+      if (!cancelled) setError('Nie udało się sprawdzić dostępu. Sprawdź połączenie i spróbuj ponownie.');
     });
     return () => { cancelled = true; };
   }, [client, ownerId, revision]);
@@ -96,29 +96,29 @@ function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient;
     setSigningOut(true);
     try {
       const result = await client.auth.signOut();
-      if (result.error) throw new Error('Could not sign out. Please try again.');
+      if (result.error) throw new Error('Nie udało się wylogować. Spróbuj ponownie.');
     } finally { setSigningOut(false); }
   }
 
   if (access) return <Notebook key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
   return <AuthShell>
     <div className="auth-card-icon"><LockKeyhole size={25} /></div>
-    <p className="eyebrow">PRIVATE NOTEBOOK</p>
-    <h2>{access === false ? 'One more step' : error ? 'Please try again' : 'Opening your notebook…'}</h2>
+    <p className="eyebrow">PRYWATNY NOTATNIK</p>
+    <h2>{access === false ? 'Jeszcze jeden krok' : error ? 'Spróbuj ponownie' : 'Otwieranie notatnika…'}</h2>
     {access === false && <>
-      <p className="auth-caption">Signed in as <strong>{email}</strong>. This account is waiting for access to the notebook.</p>
-      <p className="auth-caption">During initial setup, return to your Codex chat and confirm that you have signed in. Creating an account does not grant access to any notes.</p>
+      <p className="auth-caption">Zalogowano jako <strong>{email}</strong>. To konto czeka na przyznanie dostępu do notatnika.</p>
+      <p className="auth-caption">Przy pierwszym uruchomieniu potwierdź w rozmowie z Codex, że udało się zalogować. Samo utworzenie konta nie daje dostępu do wpisów.</p>
     </>}
     {error && <p className="error-message" role="alert">{error}</p>}
-    {(access === false || error) && <button className="button button-primary auth-submit" onClick={() => setRevision(x => x + 1)}><RefreshCw size={17} /> Check access again</button>}
-    <button className="auth-text-button auth-sign-out" disabled={signingOut} onClick={() => void signOut().catch(() => setError('Could not sign out. Please try again.'))}>{signingOut ? 'Signing out…' : 'Sign out'}</button>
+    {(access === false || error) && <button className="button button-primary auth-submit" onClick={() => setRevision(x => x + 1)}><RefreshCw size={17} /> Sprawdź dostęp ponownie</button>}
+    <button className="auth-text-button auth-sign-out" disabled={signingOut} onClick={() => void signOut().catch(() => setError('Nie udało się wylogować. Spróbuj ponownie.'))}>{signingOut ? 'Wylogowywanie…' : 'Wyloguj się'}</button>
   </AuthShell>;
 }
 
 function ConnectedApp({ client }: { client: AppNeonClient }) {
   const session = client.auth.useSession();
-  if (session.isPending) return <AuthShell><p className="eyebrow">ONE MOMENT</p><h2>Checking your session…</h2><p className="auth-caption" role="status">Your notebook will be ready in a moment.</p></AuthShell>;
-  if (session.error) return <AuthShell><h2>Unable to connect</h2><p className="auth-caption" role="alert">Check your internet connection and try again.</p><button className="button button-primary" onClick={() => window.location.reload()}>Try again</button></AuthShell>;
+  if (session.isPending) return <AuthShell><p className="eyebrow">CHWILECZKĘ</p><h2>Sprawdzanie sesji…</h2><p className="auth-caption" role="status">Notatnik będzie gotowy za chwilę.</p></AuthShell>;
+  if (session.error) return <AuthShell><h2>Brak połączenia</h2><p className="auth-caption" role="alert">Sprawdź połączenie z internetem i spróbuj ponownie.</p><button className="button button-primary" onClick={() => window.location.reload()}>Spróbuj ponownie</button></AuthShell>;
   if (!session.data?.user) return <Login client={client} />;
   const { user } = session.data;
   return <SignedIn key={user.id} client={client} ownerId={user.id} userName={user.name} email={user.email} />;
@@ -130,10 +130,10 @@ export default function App() {
   if (demo && import.meta.env.DEV) return <Notebook repository={repository} mode="demo" onSignOut={async () => { setDemo(false); window.history.replaceState(null, '', window.location.pathname); }} />;
   if (neonClient) return <ConnectedApp client={neonClient} />;
   return <AuthShell>
-    <div className="auth-card-icon"><Heart size={25} /></div>
-    <p className="eyebrow">YOUR FOOD NOTEBOOK</p>
-    <h2>Good food.<br />Worth remembering.</h2>
-    <p className="auth-caption">The database connection is being prepared. Once it is ready, you can save food preferences here.</p>
-    {import.meta.env.DEV && <><button className="button button-primary auth-submit" onClick={() => setDemo(true)}>Open local preview<ArrowRight size={18} /></button><p className="auth-privacy">Preview entries stay in this browser only. They are not synced to the database.</p></>}
+    <div className="auth-card-icon"><Utensils size={25} /></div>
+    <p className="eyebrow">TWÓJ NOTATNIK SMAKÓW</p>
+    <h2>Smaki warte<br />zapamiętania.</h2>
+    <p className="auth-caption">Trwa przygotowanie połączenia. Gdy będzie gotowe, zapiszesz tutaj preferencje żywieniowe.</p>
+    {import.meta.env.DEV && <><button className="button button-primary auth-submit" onClick={() => setDemo(true)}>Otwórz podgląd lokalny<ArrowRight size={18} /></button><p className="auth-privacy">Wpisy z podglądu pozostają w tej przeglądarce i nie są synchronizowane.</p></>}
   </AuthShell>;
 }
