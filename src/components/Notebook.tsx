@@ -160,7 +160,7 @@ export default function Notebook({ repository, mode, userName, onSignOut }: Note
         })}</div>}
         {loaded && entries.length > 0 && <p className="results-note">Widoczne wpisy: {visible.length} z {entries.length} <span>·</span> Wszystkie szczegóły pod ręką.</p>}
       </section>
-      <footer className="page-footer"><span>Food Whitelist<span className="footer-dot">·</span>Twój notatnik smaków</span><span><LockKeyhole size={12} />{mode === 'cloud' ? 'Tylko dla Ciebie' : 'Podgląd lokalny'}</span></footer>
+      <footer className="page-footer"><span>Food Whitelist<span className="footer-dot">·</span>Twój notatnik smaków</span><span><LockKeyhole size={12} />{mode === 'cloud' ? 'Dostęp prywatny' : 'Podgląd lokalny'}</span></footer>
     </main>
     {editing !== undefined && <EntryEditor key={editing?.id || 'new'} entry={editing} onClose={() => setEditing(undefined)} onSave={save} />}
     {deleting && <DeleteDialog entry={deleting} onClose={() => setDeleting(null)} onDelete={remove} />}
