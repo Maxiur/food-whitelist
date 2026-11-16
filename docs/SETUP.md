@@ -6,20 +6,36 @@ Use a dedicated Neon project. This project uses PostgreSQL 17 in Frankfurt (aws-
 
 1. Enable Neon Auth (Better Auth) and Data API for the same database, neondb.
 2. Use Neon Auth as the Data API identity provider. Expose only the public schema, never app_private or neon_auth. Disable automatic grants to all tables. Set the API row limit to at least 500 (this deployment uses 1000).
-3. Apply [001_food_preferences.sql](../database/001_food_preferences.sql), then [003_ingredient_categories.sql](../database/003_ingredient_categories.sql) as the database owner. Then apply `004_shared_notebook.sql`. Scripts `002` and `005` are manual approval examples, not automatic migrations. Do not rerun migration `001` after `004`: it restores the original single-owner policies.
+3. Apply [001_food_preferences.sql](../database/001_food_preferences.sql), then [003_ingredient_categories.sql](../database/003_ingredient_categories.sql) as the database owner. Then apply `004_shared_notebook.sql` and `006_verified_email_access.sql`. Scripts `002` and `005` are manual approval examples, not automatic migrations. Do not rerun migration `001` after later migrations: it restores the original single-owner policies.
 4. Trust the frontend origin in Neon Auth: https://maxiur.github.io. Local development uses http://127.0.0.1:5173. Match CORS origins if restricting Data API CORS.
 
 The migration creates a private allowlist and a food_preferences table with RLS. The allowlist is empty initially. Request identity comes from the verified JWT claims installed by PostgREST for each transaction. Missing claims deny access. No SQL or claims-setting endpoint is exposed.
 
-## First sign-in and owner approval
+## Automatic access after verified sign-in
 
-1. Open the application, enter your email, receive the one-time code and enter it yourself.
-2. The account remains on the access-pending screen until approved.
-3. Find its exact user ID in Neon Auth Users. Confirm its email is verified and belongs to the intended owner.
-4. Use [002_set_owner.example.sql](../database/002_set_owner.example.sql) in the SQL Editor, replacing the placeholder in a private copy. Do not commit the populated script.
-5. Select **Sprawdź dostęp ponownie** (check access again) in the application.
+Apply `006_verified_email_access.sql` after migrations `001`, `003` and `004`.
+Before users sign in, privately configure the exact owner email using
+`007_approve_email.example.sql`. Configure the optional second email with the
+`member` role. Never commit populated scripts or real email addresses.
 
-The bootstrap refuses to replace an existing owner. After the collaborator signs in, verify their exact user ID and verified email in Neon Auth, then apply `005_set_member.example.sql` using a private copy. Never commit populated IDs or email addresses. Both approved users can create, edit and delete all shared entries. Other accounts cannot read or write entries. Refresh the list to see changes from another device; the app also refreshes when the window regains focus. Shared Neon email delivery is used for initial setup; consult the [Neon production checklist](https://neon.com/docs/auth/production-checklist) before relying on production email delivery.
+Users enter their own email and one-time code. A verified account matching the
+private allowlist gets access automatically; no chat confirmation or manual
+user-ID lookup is required. Unapproved addresses cannot access notebook data.
+Email identity is read from the managed Neon Auth user table, not from an email
+submitted by the browser or an untrusted JWT email claim. The browser cannot
+read or modify the allowlist. There is no first-sign-up-wins bootstrap.
+
+Both approved accounts share create, edit and delete access. Existing explicit
+owner/member ID bindings from scripts `002` and `005` remain supported; an
+explicit owner binding takes priority over email-based discovery. Do not change
+the owner's identity without reviewing ownership of stored entries. If an auth
+account is deleted and recreated with a new ID, old entries are not transferred
+automatically. Self-service invitations are not implemented yet.
+
+Refresh to see changes from another device; the app also refreshes when the
+window regains focus. Shared Neon email delivery is used for initial setup;
+consult the [Neon production checklist](https://neon.com/docs/auth/production-checklist)
+before relying on production email delivery.
 
 ## Public configuration
 
@@ -46,7 +62,7 @@ The workflow installs locked dependencies, runs tests, builds, and uploads only 
 
 ## Verification
 
-Run npm test and npm run build. On an isolated Neon test branch, apply the migration and execute [verify_privacy.sql](../database/verify_privacy.sql). Stop at the first error. The script uses synthetic identities, verifies owner and collaborator CRUD, rejects stranger and anonymous access, protects the allowlist, and rolls back its changes.
+Run npm test and npm run build. On an isolated Neon test branch, apply the migration and execute [verify_privacy.sql](../database/verify_privacy.sql), followed by [verify_email_access.sql](../database/verify_email_access.sql) on an unconfigured test branch. Stop at the first error. The script uses synthetic identities, verifies owner and collaborator CRUD, rejects stranger and anonymous access, protects the allowlist, and rolls back its changes.
 
 SQL tests do not verify actual JWT transport or email delivery. Separately test first sign-in, sign-out, session restoration, owner CRUD through the API, another account, anonymous requests and a second device. These checks require the owner to enter their email code. Never treat a successful build as proof that authentication works.
 

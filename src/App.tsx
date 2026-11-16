@@ -118,10 +118,10 @@ function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient;
   return <AuthShell>
     <div className="auth-card-icon"><LockKeyhole size={25} /></div>
     <p className="eyebrow">PRYWATNY NOTATNIK</p>
-    <h2>{access === false ? 'Jeszcze jeden krok' : error ? 'Spróbuj ponownie' : 'Otwieranie notatnika…'}</h2>
+    <h2>{access === false ? 'Brak dostępu' : error ? 'Spróbuj ponownie' : 'Otwieranie notatnika…'}</h2>
     {access === false && <>
-      <p className="auth-caption">Zalogowano jako <strong>{email}</strong>. To konto czeka na przyznanie dostępu do notatnika.</p>
-      <p className="auth-caption">Przy pierwszym uruchomieniu potwierdź w rozmowie z Codex, że udało się zalogować. Samo utworzenie konta nie daje dostępu do wpisów.</p>
+      <p className="auth-caption">Zalogowano jako <strong>{email}</strong>. Ten adres nie ma dostępu do tego notatnika.</p>
+      <p className="auth-caption">Zaloguj się adresem przypisanym do notatnika. Dostęp dla zaproszonego konta jest aktywowany automatycznie po potwierdzeniu adresu kodem z e-maila.</p>
     </>}
     {error && <p className="error-message" role="alert">{error}</p>}
     {(access === false || error) && <button className="button button-primary auth-submit" onClick={() => setRevision(x => x + 1)}><RefreshCw size={17} /> Sprawdź dostęp ponownie</button>}

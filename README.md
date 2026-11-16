@@ -7,7 +7,7 @@ A private food preference notebook. Record foods and ingredients, mark them as l
 - Create, edit and delete food preferences.
 - Categories, accent-insensitive search, filters and sorting.
 - Ingredient categories cover meat, seafood, dairy and eggs, grains, legumes and nuts, herbs and spices, and sauces. For example, chicken belongs to Meat; a prepared chicken curry belongs to Meals.
-- Email-code sign-in through Neon Auth.
+- Email-code sign-in through Neon Auth. Preapproved email addresses get notebook access automatically after verification.
 - PostgreSQL persistence with access restricted to an approved owner and one approved collaborator. Both sign in independently by email code and share all entries.
 - JSON export of loaded entries.
 - Explicit local preview for development, separate from cloud data.
@@ -28,7 +28,7 @@ npm test
 npm run build
 ```
 
-See [setup and deployment](docs/SETUP.md) for database migrations, owner approval and GitHub Pages configuration.
+See [setup and deployment](docs/SETUP.md) for database migrations, private email configuration and GitHub Pages configuration.
 
 ## Data privacy
 
