@@ -68,6 +68,17 @@ SQL tests do not verify actual JWT transport or email delivery. Separately test 
 
 ## Exports and maintenance
 
+Apply `008_multiple_categories.sql` once after the existing migrations, then
+refresh the Data API schema cache before deploying the matching frontend.
+It backfills each entry's categories from the legacy category, preserving edit
+timestamps. The legacy field remains the first category for older clients.
+Category validation and column grants apply to both formats.
+
+Entry drafts use session storage scoped to the signed-in account and entry ID.
+They are private to that browser tab and are cleared after a successful save or
+explicit discard. They are not a cloud backup. Password settings are available
+through the account gear icon, including on the mobile header.
+
 Refresh before exporting to include changes from another device. Exports contain the loaded entries, not the full database or authentication configuration. Keep them outside the public repository.
 
 Neon can suspend idle compute and resume it on demand while retaining storage. Free-plan usage limits still apply. Check [current plans](https://neon.com/docs/introduction/plans) and [scale to zero](https://neon.com/docs/introduction/scale-to-zero).

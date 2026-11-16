@@ -23,7 +23,9 @@ export function validateFoodInput(value: unknown): FoodInput {
   if (input.preference !== 'like' && input.preference !== 'dislike') {
     throw new InputValidationError('Wybierz: lubi lub nie lubi.', 'preference');
   }
-  if (typeof input.category !== 'string' || !(FOOD_CATEGORIES as readonly string[]).includes(input.category)) {
+  const categories = input.categories === undefined ? [input.category] : input.categories;
+  if (!Array.isArray(categories) || !categories.length || categories.length > FOOD_CATEGORIES.length ||
+      categories.some(category => typeof category !== 'string' || !(FOOD_CATEGORIES as readonly string[]).includes(category))) {
     throw new InputValidationError('Wybierz kategorię z listy.', 'category');
   }
   if (typeof input.notes !== 'string' || input.notes.length > 2000) {
@@ -32,7 +34,8 @@ export function validateFoodInput(value: unknown): FoodInput {
   return {
     name,
     preference: input.preference,
-    category: input.category as FoodInput['category'],
+    category: categories[0] as FoodInput['category'],
+    categories: [...new Set(categories)] as FoodInput['category'][],
     notes: input.notes.trim(),
   };
 }

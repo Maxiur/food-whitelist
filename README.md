@@ -5,6 +5,9 @@ A private food preference notebook. Record foods and ingredients, mark them as l
 ## Features
 
 - Create, edit and delete food preferences.
+- Select multiple categories per entry, including Sweets. Filters match any selected category.
+- Tab-scoped drafts survive dialog closure and page reloads. Save or explicitly discard a draft to clear it; drafts are not synced between devices.
+- Long notes can be expanded and scrolled; empty notes are omitted.
 - Categories, accent-insensitive search, filters and sorting.
 - Ingredient categories cover meat, seafood, dairy and eggs, grains, legumes and nuts, herbs and spices, and sauces. For example, chicken belongs to Meat; a prepared chicken curry belongs to Meals.
 - Email-code sign-in through Neon Auth. Preapproved email addresses get notebook access automatically after verification.

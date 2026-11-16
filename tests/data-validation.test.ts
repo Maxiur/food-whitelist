@@ -7,7 +7,7 @@ const valid = { name: ' Tomatoes ', preference: 'like', category: 'Vegetables', 
 describe('food input boundary', () => {
   it('normalizes values and discards caller-controlled ownership fields', () => {
     expect(validateFoodInput({ ...valid, owner_id: 'someone-else', id: 'fake' })).toEqual({
-      name: 'Tomatoes', preference: 'like', category: 'Vegetables', notes: 'Only in sauce.',
+      name: 'Tomatoes', preference: 'like', category: 'Vegetables', categories: ['Vegetables'], notes: 'Only in sauce.',
     });
   });
 
@@ -25,6 +25,12 @@ describe('food input boundary', () => {
 
   it('supports searching Polish names without accents', () => {
     expect(normalizeSearch('  Żółty ŚLEDŹ  ')).toBe('zolty sledz');
+  });
+
+  it('deduplicates multiple categories and rejects empty or unknown selections', () => {
+    expect(validateFoodInput({ ...valid, categories: ['Sweets', 'Snacks', 'Sweets'] }).categories).toEqual(['Sweets', 'Snacks']);
+    expect(() => validateFoodInput({ ...valid, categories: [] })).toThrow();
+    expect(() => validateFoodInput({ ...valid, categories: ['unknown'] })).toThrow();
   });
 
   it.each(FOOD_CATEGORIES)('accepts the persisted category %s', (category) => {

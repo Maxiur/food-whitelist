@@ -3,7 +3,7 @@ export type Preference = 'like' | 'dislike';
 export const FOOD_CATEGORIES = [
   'Vegetables', 'Fruit', 'Meat', 'FishSeafood', 'DairyEggs',
   'Grains', 'LegumesNuts', 'HerbsSpices', 'Sauces',
-  'Meals', 'Desserts', 'Drinks', 'Snacks', 'Other',
+  'Meals', 'Desserts', 'Sweets', 'Drinks', 'Snacks', 'Other',
 ] as const;
 export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
 
@@ -11,6 +11,7 @@ export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
 export const CATEGORY_LABELS: Record<FoodCategory, string> = {
   Vegetables: 'Warzywa', Fruit: 'Owoce', Meals: 'Dania', Desserts: 'Desery',
   Drinks: 'Napoje', Snacks: 'Przekąski', Other: 'Inne',
+  Sweets: 'Słodycze',
   Meat: 'Mięso', FishSeafood: 'Ryby i owoce morza', DairyEggs: 'Nabiał i jaja',
   Grains: 'Produkty zbożowe', LegumesNuts: 'Strączki i orzechy',
   HerbsSpices: 'Zioła i przyprawy', Sauces: 'Sosy i dodatki',
@@ -20,6 +21,7 @@ export interface FoodInput {
   name: string;
   preference: Preference;
   category: FoodCategory;
+  categories?: FoodCategory[];
   notes: string;
 }
 
@@ -40,6 +42,7 @@ export interface NotebookProps {
   repository: FoodRepository;
   mode: 'demo' | 'cloud';
   userName?: string;
+  draftScope?: string;
   onManagePassword?: () => void;
   onSignOut?: () => Promise<void>;
 }

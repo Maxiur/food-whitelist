@@ -120,7 +120,7 @@ function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient;
   }
 
   if (access && passwordSettings) return <AuthShell><PasswordForm client={client} initialEmail={email} setup onBack={() => setPasswordSettings(false)} /></AuthShell>;
-  if (access && repository) return <Notebook onManagePassword={() => setPasswordSettings(true)} key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
+  if (access && repository) return <Notebook draftScope={ownerId} onManagePassword={() => setPasswordSettings(true)} key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
   return <AuthShell>
     <div className="auth-card-icon"><LockKeyhole size={25} /></div>
     <p className="eyebrow">PRYWATNY NOTATNIK</p>
