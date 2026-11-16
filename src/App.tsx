@@ -100,7 +100,6 @@ export function Login({ client }: { client: AppNeonClient }) {
 
 function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient; ownerId: string; userName?: string; email?: string }) {
   const [access, setAccess] = useState<boolean | null>(null);
-  const [passwordSettings, setPasswordSettings] = useState(false);
   const [notebookOwnerId, setNotebookOwnerId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
@@ -123,8 +122,7 @@ function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient;
     } finally { setSigningOut(false); }
   }
 
-  if (access && passwordSettings) return <AuthShell><PasswordForm client={client} initialEmail={email} setup onBack={() => setPasswordSettings(false)} /></AuthShell>;
-  if (access && repository) return <Notebook draftScope={ownerId} onManagePassword={() => setPasswordSettings(true)} key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
+  if (access && repository) return <Notebook draftScope={ownerId} userEmail={email} renderPasswordSettings={onBack => <PasswordForm client={client} initialEmail={email} setup embedded onBack={onBack} />} key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
   return <AuthShell>
     <div className="auth-card-icon"><LockKeyhole size={25} /></div>
     <p className="eyebrow">PRYWATNY NOTATNIK</p>

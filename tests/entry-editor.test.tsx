@@ -3,10 +3,15 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
 import { EntryEditor } from '../src/components/Notebook';
-import { draftKey, readDraft } from '../src/lib/entry-draft';
+import { draftKey, readDraft, saveDraft } from '../src/lib/entry-draft';
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 HTMLDialogElement.prototype.showModal = function () { this.open = true; };
 HTMLDialogElement.prototype.close = function () { this.open = false; };
+it('preserves unfinished context tags in a draft, including trailing delimiters', () => {
+  const key = draftKey('context-draft-test');
+  saveDraft(key, { name: '', preference: 'like', category: 'Other', categories: [], notes: '', kind: 'dish', tags: ['śniadanie', ' na ', ''] });
+  expect(readDraft(key)).toMatchObject({ name: '', categories: [], kind: 'dish', tags: ['śniadanie', ' na ', ''] });
+});
 it('keeps the dialog open on backdrop click and restores the draft across remounts', async () => {
   sessionStorage.clear();
   const element = document.createElement('div'); document.body.append(element);

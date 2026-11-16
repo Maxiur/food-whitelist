@@ -17,11 +17,20 @@ export const CATEGORY_LABELS: Record<FoodCategory, string> = {
   HerbsSpices: 'Zioła i przyprawy', Sauces: 'Sosy i dodatki',
 };
 
+export const FOOD_KINDS = ['unspecified', 'ingredient', 'dish'] as const;
+export type FoodKind = (typeof FOOD_KINDS)[number];
+export const KIND_LABELS: Record<FoodKind, string> = {
+  unspecified: 'Bez określonego typu', ingredient: 'Składnik', dish: 'Gotowe danie',
+};
+export const SUGGESTED_TAGS = ['śniadanie', 'obiad', 'kolacja', 'na szybko', 'dodatek', 'restauracja'];
+
 export interface FoodInput {
   name: string;
   preference: Preference;
   category: FoodCategory;
   categories?: FoodCategory[];
+  kind?: FoodKind;
+  tags?: string[];
   notes: string;
 }
 
@@ -43,6 +52,7 @@ export interface NotebookProps {
   mode: 'demo' | 'cloud';
   userName?: string;
   draftScope?: string;
-  onManagePassword?: () => void;
+  userEmail?: string;
+  renderPasswordSettings?: (onBack: () => void) => import('react').ReactNode;
   onSignOut?: () => Promise<void>;
 }

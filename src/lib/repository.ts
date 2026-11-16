@@ -2,7 +2,7 @@ import type { AppNeonClient } from './neon';
 import type { FoodEntry, FoodInput, FoodRepository } from './types';
 import { validateFoodInput } from './validation';
 
-const COLUMNS = 'id,name,preference,category,categories,notes,created_at,updated_at';
+const COLUMNS = 'id,name,preference,category,categories,kind,tags,notes,created_at,updated_at';
 export const DEMO_STORAGE_KEY = 'food-whitelist:demo:food:v1';
 
 export async function getNotebookOwnerId(client: AppNeonClient): Promise<string | null> {

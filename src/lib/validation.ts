@@ -1,4 +1,4 @@
-import { FOOD_CATEGORIES, type FoodInput } from './types';
+import { FOOD_CATEGORIES, FOOD_KINDS, type FoodInput, type FoodKind } from './types';
 
 export class InputValidationError extends Error {
   constructor(message: string, public readonly field?: keyof FoodInput) {
@@ -31,11 +31,25 @@ export function validateFoodInput(value: unknown): FoodInput {
   if (typeof input.notes !== 'string' || input.notes.length > 2000) {
     throw new InputValidationError('Notatki mogą mieć maksymalnie 2000 znaków.', 'notes');
   }
+  const kind = input.kind === undefined ? 'unspecified' : input.kind;
+  if (!(FOOD_KINDS as readonly unknown[]).includes(kind)) {
+    throw new InputValidationError('Wybierz typ wpisu z listy.', 'kind');
+  }
+  const rawTags = input.tags === undefined ? [] : input.tags;
+  if (!Array.isArray(rawTags) || rawTags.length > 32 || rawTags.some(tag => typeof tag !== 'string' || tag.length > 264)) {
+    throw new InputValidationError('Nieprawidłowy format tagów.', 'tags');
+  }
+  const tags = [...new Set(rawTags.map(tag => tag.trim().replace(/^#+/, '').replace(/\s+/g, ' ').toLocaleLowerCase('pl')).filter(Boolean))];
+  if (tags.length > 8 || tags.some(tag => tag.length > 32)) {
+    throw new InputValidationError('Dodaj maksymalnie 8 tagów, każdy do 32 znaków.', 'tags');
+  }
   return {
     name,
     preference: input.preference,
     category: categories[0] as FoodInput['category'],
     categories: [...new Set(categories)] as FoodInput['category'][],
+    kind: kind as FoodKind,
+    tags,
     notes: input.notes.trim(),
   };
 }

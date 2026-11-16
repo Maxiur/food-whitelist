@@ -7,7 +7,7 @@ const valid = { name: ' Tomatoes ', preference: 'like', category: 'Vegetables', 
 describe('food input boundary', () => {
   it('normalizes values and discards caller-controlled ownership fields', () => {
     expect(validateFoodInput({ ...valid, owner_id: 'someone-else', id: 'fake' })).toEqual({
-      name: 'Tomatoes', preference: 'like', category: 'Vegetables', categories: ['Vegetables'], notes: 'Only in sauce.',
+      name: 'Tomatoes', preference: 'like', category: 'Vegetables', categories: ['Vegetables'], kind: 'unspecified', tags: [], notes: 'Only in sauce.',
     });
   });
 
@@ -35,5 +35,14 @@ describe('food input boundary', () => {
 
   it.each(FOOD_CATEGORIES)('accepts the persisted category %s', (category) => {
     expect(validateFoodInput({ ...valid, category }).category).toBe(category);
+  });
+
+  it('normalizes tags independently of categories and type', () => {
+    expect(validateFoodInput({ ...valid, kind: 'dish', tags: [' #Śniadanie ', 'na  szybko', 'śniadanie', ''] }))
+      .toMatchObject({ kind: 'dish', category: 'Vegetables', tags: ['śniadanie', 'na szybko'] });
+  });
+
+  it.each([{ kind: 'other' }, { kind: null }, { tags: [null] }, { tags: ['x'.repeat(33)] }, { tags: Array.from({ length: 9 }, (_, i) => `tag${i}`) }])('rejects invalid context %j', extra => {
+    expect(() => validateFoodInput({ ...valid, ...extra })).toThrow();
   });
 });

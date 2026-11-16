@@ -83,4 +83,8 @@ Refresh before exporting to include changes from another device. Exports contain
 
 Neon can suspend idle compute and resume it on demand while retaining storage. Free-plan usage limits still apply. Check [current plans](https://neon.com/docs/introduction/plans) and [scale to zero](https://neon.com/docs/introduction/scale-to-zero).
 
+Apply `009_food_context.sql` once after `008_multiple_categories.sql`, first on an isolated test branch. Run `verify_food_context.sql` and the existing privacy checks, then apply it to production and refresh the Data API schema cache before deploying the new frontend. It adds `kind` and `tags` with database constraints and column-level write grants for authenticated users; existing RLS policies remain in force. Existing entries retain their edit timestamps and default to `unspecified` with no tags. Older clients can continue writing the original fields.
+
+The settings panel contains account details, password setup/reset and a full JSON export. It does not grant collaborator access: approved email addresses are still configured privately using the procedure above. Export format version 2 includes entry types and tags.
+
 Add future modules through separate migrations and access policies. Do not widen anonymous access or expose private schemas. Repeat authorization tests after schema or SDK changes.

@@ -6,10 +6,13 @@ A private food preference notebook. Record foods and ingredients, mark them as l
 
 - Create, edit and delete food preferences.
 - Select multiple categories per entry, including Sweets. Filters match any selected category.
+- Independent entry type (ingredient, prepared dish, or unclassified) and up to eight context tags. Existing entries remain unclassified until edited.
+- Combine multi-select category, type and tag filters. Selections within a group use OR; different groups use AND. Click a tag on a card to filter by it.
+- Account settings keep password management and a full JSON export in one panel, without leaving the notebook or resetting filters.
 - Tab-scoped drafts survive dialog closure and page reloads. Save or explicitly discard a draft to clear it; drafts are not synced between devices.
 - Long notes can be expanded and scrolled; empty notes are omitted.
 - Categories, accent-insensitive search, filters and sorting.
-- Ingredient categories cover meat, seafood, dairy and eggs, grains, legumes and nuts, herbs and spices, and sauces. For example, chicken belongs to Meat; a prepared chicken curry belongs to Meals.
+- Categories describe food groups independently of preparation or context. A salmon spread can be a prepared dish in FishSeafood and Sauces, with a breakfast tag.
 - Email-code sign-in through Neon Auth. Preapproved email addresses get notebook access automatically after verification.
 - Optional email/password sign-in. Set or recover a password using a dedicated email reset code, including on an existing passwordless account. Password hashing and credential storage are handled by managed Neon Auth, never by the notebook tables or browser storage.
 - PostgreSQL persistence with access restricted to an approved owner and one approved collaborator. Both sign in independently by email code and share all entries.
