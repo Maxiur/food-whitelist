@@ -8,6 +8,7 @@ A private food preference notebook. Record foods and ingredients, mark them as l
 - Categories, accent-insensitive search, filters and sorting.
 - Ingredient categories cover meat, seafood, dairy and eggs, grains, legumes and nuts, herbs and spices, and sauces. For example, chicken belongs to Meat; a prepared chicken curry belongs to Meals.
 - Email-code sign-in through Neon Auth. Preapproved email addresses get notebook access automatically after verification.
+- Optional email/password sign-in. Set or recover a password using a dedicated email reset code, including on an existing passwordless account. Password hashing and credential storage are handled by managed Neon Auth, never by the notebook tables or browser storage.
 - PostgreSQL persistence with access restricted to an approved owner and one approved collaborator. Both sign in independently by email code and share all entries.
 - JSON export of loaded entries.
 - Explicit local preview for development, separate from cloud data.

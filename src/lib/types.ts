@@ -40,5 +40,6 @@ export interface NotebookProps {
   repository: FoodRepository;
   mode: 'demo' | 'cloud';
   userName?: string;
+  onManagePassword?: () => void;
   onSignOut?: () => Promise<void>;
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, Utensils, LockKeyhole, Mail, RefreshCw, ShieldCheck } from 'lucide-react';
 import Notebook from './components/Notebook';
+import PasswordForm from './components/PasswordForm';
 import { neonClient, type AppNeonClient } from './lib/neon';
 import { createCloudRepository, createDemoRepository, getNotebookOwnerId } from './lib/repository';
 import { clearPendingLogin, readPendingLogin, resendCooldown, savePendingLogin } from './lib/pending-login';
@@ -23,6 +24,7 @@ function AuthShell({ children }: { children: ReactNode }) {
 }
 
 export function Login({ client }: { client: AppNeonClient }) {
+  const [passwordMode, setPasswordMode] = useState(false);
   const [pending] = useState(() => readPendingLogin());
   const [email, setEmail] = useState(pending?.email || '');
   const [otp, setOtp] = useState('');
@@ -71,6 +73,7 @@ export function Login({ client }: { client: AppNeonClient }) {
     finally { setBusy(false); }
   }
 
+  if (passwordMode) return <AuthShell><PasswordForm client={client} onBack={() => setPasswordMode(false)} /></AuthShell>;
   return <AuthShell>
     <div className="auth-card-icon"><Mail size={25} /></div>
     <p className="eyebrow">DOSTĘP DO NOTATNIKA</p>
@@ -86,12 +89,14 @@ export function Login({ client }: { client: AppNeonClient }) {
       <button className="auth-text-button" disabled={busy} onClick={() => { clearPendingLogin(); setSent(false); setError(''); setOtp(''); setSentAt(0); setCooldown(0); }}><ArrowLeft size={14} /> Zmień adres</button>
       <button className="auth-text-button" disabled={busy || cooldown > 0} onClick={() => void sendCode()}>{cooldown > 0 ? `Wyślij ponownie za ${cooldown} s` : 'Wyślij nowy kod'}</button>
     </div>}
+    {!sent && <button className="auth-text-button" disabled={busy} onClick={() => setPasswordMode(true)}>Zaloguj się hasłem</button>}
     <p className="auth-privacy"><ShieldCheck size={17} /> Dostęp do wpisów mają tylko zatwierdzone konta.</p>
   </AuthShell>;
 }
 
 function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient; ownerId: string; userName?: string; email?: string }) {
   const [access, setAccess] = useState<boolean | null>(null);
+  const [passwordSettings, setPasswordSettings] = useState(false);
   const [notebookOwnerId, setNotebookOwnerId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
@@ -114,7 +119,8 @@ function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient;
     } finally { setSigningOut(false); }
   }
 
-  if (access && repository) return <Notebook key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
+  if (access && passwordSettings) return <AuthShell><PasswordForm client={client} initialEmail={email} setup onBack={() => setPasswordSettings(false)} /></AuthShell>;
+  if (access && repository) return <Notebook onManagePassword={() => setPasswordSettings(true)} key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
   return <AuthShell>
     <div className="auth-card-icon"><LockKeyhole size={25} /></div>
     <p className="eyebrow">PRYWATNY NOTATNIK</p>
