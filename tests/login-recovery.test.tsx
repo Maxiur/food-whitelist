@@ -47,6 +47,7 @@ beforeEach(async () => {
   send.mockReset().mockResolvedValue({ error: null });
   verify.mockReset().mockResolvedValue({ error: null });
   await mount();
+  await act(async () => container.querySelectorAll<HTMLButtonElement>('.auth-methods button')[1].click());
 });
 afterEach(async () => {
   await act(async () => root.unmount());
@@ -55,6 +56,17 @@ afterEach(async () => {
 });
 
 describe('email-code login recovery', () => {
+  it('keeps a pending code bound to its original email when switching login methods', async () => {
+    await requestCode();
+    await fill('.otp-input', '123456');
+    await act(async () => container.querySelectorAll<HTMLButtonElement>('.auth-methods button')[0].click());
+    expect(container.querySelector('input[type=password]')).not.toBeNull();
+    await fill('input[type=email]', 'different@example.com');
+    await act(async () => container.querySelectorAll<HTMLButtonElement>('.auth-methods button')[1].click());
+    expect(container.textContent).toContain('tester@example.com');
+    expect(container.querySelector<HTMLInputElement>('.otp-input')?.value).toBe('123456');
+    expect(send).toHaveBeenCalledTimes(1);
+  });
   it('keeps the same form and entered code during a background session refresh', async () => {
     await requestCode();
     await fill('.otp-input', '123456');

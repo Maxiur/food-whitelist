@@ -24,8 +24,8 @@ function AuthShell({ children }: { children: ReactNode }) {
 }
 
 export function Login({ client }: { client: AppNeonClient }) {
-  const [passwordMode, setPasswordMode] = useState(false);
   const [pending] = useState(() => readPendingLogin());
+  const [passwordMode, setPasswordMode] = useState(!pending);
   const [email, setEmail] = useState(pending?.email || '');
   const [otp, setOtp] = useState('');
   const [sent, setSent] = useState(Boolean(pending));
@@ -73,10 +73,13 @@ export function Login({ client }: { client: AppNeonClient }) {
     finally { setBusy(false); }
   }
 
-  if (passwordMode) return <AuthShell><PasswordForm client={client} onBack={() => setPasswordMode(false)} /></AuthShell>;
   return <AuthShell>
-    <div className="auth-card-icon"><Mail size={25} /></div>
     <p className="eyebrow">DOSTĘP DO NOTATNIKA</p>
+    <div className="auth-methods" role="group" aria-label="Sposób logowania">
+      <button type="button" aria-pressed={passwordMode} disabled={busy} onClick={() => setPasswordMode(true)}><LockKeyhole size={18} />Hasło</button>
+      <button type="button" aria-pressed={!passwordMode} disabled={busy} onClick={() => setPasswordMode(false)}><Mail size={18} />Kod z e-maila</button>
+    </div>
+    {passwordMode ? <PasswordForm client={client} initialEmail={email} onEmailChange={value => { if (!sent) setEmail(value); }} embedded onBack={() => setPasswordMode(false)} /> : <>
     <h2>{sent ? 'Sprawdź skrzynkę' : 'Zaloguj się'}</h2>
     <p className="auth-caption">{sent ? <>Kod logowania został wysłany na <strong>{email}</strong>. Wpisz go poniżej.</> : 'Wpisz adres e-mail. Otrzymasz kod, którym otworzysz notatnik na dowolnym urządzeniu.'}</p>
     <form onSubmit={sent ? verifyCode : sendCode} className="auth-form">
@@ -89,7 +92,8 @@ export function Login({ client }: { client: AppNeonClient }) {
       <button className="auth-text-button" disabled={busy} onClick={() => { clearPendingLogin(); setSent(false); setError(''); setOtp(''); setSentAt(0); setCooldown(0); }}><ArrowLeft size={14} /> Zmień adres</button>
       <button className="auth-text-button" disabled={busy || cooldown > 0} onClick={() => void sendCode()}>{cooldown > 0 ? `Wyślij ponownie za ${cooldown} s` : 'Wyślij nowy kod'}</button>
     </div>}
-    {!sent && <button className="auth-text-button" disabled={busy} onClick={() => setPasswordMode(true)}>Zaloguj się hasłem</button>}
+    </>}
+    <p className="auth-first-login">Pierwszy raz? Wybierz <button type="button" disabled={busy} onClick={() => setPasswordMode(false)}>Kod z e-maila</button>, aby utworzyć konto i potwierdzić adres. Hasło możesz ustawić później.</p>
     <p className="auth-privacy"><ShieldCheck size={17} /> Dostęp do wpisów mają tylko zatwierdzone konta.</p>
   </AuthShell>;
 }
