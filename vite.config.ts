@@ -5,5 +5,5 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   build: { sourcemap: false },
-  test: { environment: 'node', include: ['tests/**/*.test.ts'] },
+  test: { environment: 'node', include: ['tests/**/*.test.{ts,tsx}'] },
 });

@@ -23,6 +23,13 @@ The bootstrap refuses to replace an existing owner. After the collaborator signs
 
 ## Public configuration
 
+The email-code form keeps the pending email address and request timestamp in
+tab-scoped session storage, so returning from an email app or reloading the page
+does not reset the code-entry step. UI recovery expires after 15 minutes; OTP
+validity remains controlled by Neon Auth. The OTP itself is never persisted.
+Successful sign-in or changing the email clears the pending record. Background
+session refreshes preserve the mounted login form.
+
 The two public HTTPS service URLs are tracked in .env.production. Vite includes them in the browser bundle. .env.local is ignored. Neither file should contain a database password, privileged key or PostgreSQL connection string.
 
 For another deployment, replace both addresses with the URLs from that Neon project. To connect local development, copy .env.production to .env.local and restart Vite. Without configuration, a development-only local preview is available. Production never falls back to demo mode.
