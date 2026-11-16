@@ -6,8 +6,9 @@ A private food preference notebook. Record foods and ingredients, mark them as l
 
 - Create, edit and delete food preferences.
 - Categories, accent-insensitive search, filters and sorting.
+- Ingredient categories cover meat, seafood, dairy and eggs, grains, legumes and nuts, herbs and spices, and sauces. For example, chicken belongs to Meat; a prepared chicken curry belongs to Meals.
 - Email-code sign-in through Neon Auth.
-- PostgreSQL persistence with access restricted to one approved owner.
+- PostgreSQL persistence with access restricted to an approved owner and one approved collaborator. Both sign in independently by email code and share all entries.
 - JSON export of loaded entries.
 - Explicit local preview for development, separate from cloud data.
 
@@ -31,7 +32,7 @@ See [setup and deployment](docs/SETUP.md) for database migrations, owner approva
 
 ## Data privacy
 
-The source and website assets are public. Notebook entries are stored separately in PostgreSQL. Row Level Security and a private single-owner allowlist enforce access independently of the interface. Creating an account does not grant notebook access.
+The source and website assets are public. Notebook entries are stored separately in PostgreSQL. Row Level Security and private owner/member allowlists enforce access independently of the interface. Creating an account does not grant notebook access.
 
 Only public Neon Auth and Data API addresses are included in `.env.production` and the browser bundle. Never commit database passwords, `DATABASE_URL`, administrative keys, real records or exports. Cloud failures do not silently switch to local storage. Local preview entries are not automatically migrated to Neon.
 

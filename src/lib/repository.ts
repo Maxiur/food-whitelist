@@ -5,10 +5,10 @@ import { validateFoodInput } from './validation';
 const COLUMNS = 'id,name,preference,category,notes,created_at,updated_at';
 export const DEMO_STORAGE_KEY = 'food-whitelist:demo:food:v1';
 
-export async function hasNotebookAccess(client: AppNeonClient): Promise<boolean> {
-  const { data, error } = await client.rpc('has_notebook_access');
+export async function getNotebookOwnerId(client: AppNeonClient): Promise<string | null> {
+  const { data, error } = await client.rpc('get_notebook_owner_id');
   databaseError(error);
-  if (typeof data !== 'boolean') throw new Error('Nie udało się sprawdzić dostępu do notatnika.');
+  if (data !== null && (typeof data !== 'string' || !data)) throw new Error('Nie udało się sprawdzić dostępu do notatnika.');
   return data;
 }
 

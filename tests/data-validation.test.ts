@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeSearch, validateFoodInput } from '../src/lib/validation';
+import { FOOD_CATEGORIES } from '../src/lib/types';
 
 const valid = { name: ' Tomatoes ', preference: 'like', category: 'Vegetables', notes: ' Only in sauce. ' };
 
@@ -24,5 +25,9 @@ describe('food input boundary', () => {
 
   it('supports searching Polish names without accents', () => {
     expect(normalizeSearch('  Żółty ŚLEDŹ  ')).toBe('zolty sledz');
+  });
+
+  it.each(FOOD_CATEGORIES)('accepts the persisted category %s', (category) => {
+    expect(validateFoodInput({ ...valid, category }).category).toBe(category);
   });
 });

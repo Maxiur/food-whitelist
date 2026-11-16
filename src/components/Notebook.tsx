@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowDownToLine, ArrowUpRight, BookOpen, Check, CheckCheck, ChevronDown, Cloud, Coffee, Cookie, Leaf, LoaderCircle, LockKeyhole, LogOut, MessageCircle, Pencil, Plus, RefreshCw, Search, Sprout, Trash2, Utensils, Wheat, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpRight, Beef, BookOpen, Check, CheckCheck, ChevronDown, Cloud, Coffee, Cookie, Egg, Fish, Leaf, LoaderCircle, LockKeyhole, LogOut, MessageCircle, Pencil, Plus, RefreshCw, Search, Sprout, Trash2, Utensils, Wheat, X } from 'lucide-react';
 import { normalizeSearch } from '../lib/validation';
 import { CATEGORY_LABELS, FOOD_CATEGORIES, type FoodCategory, type FoodEntry, type FoodInput, type NotebookProps, type Preference } from '../lib/types';
 
-const categoryIcons = { Vegetables: Sprout, Fruit: Leaf, Meals: Utensils, Desserts: Cookie, Drinks: Coffee, Snacks: Wheat, Other: Check };
+const categoryIcons = { Vegetables: Sprout, Fruit: Leaf, Meat: Beef, FishSeafood: Fish, DairyEggs: Egg, Grains: Wheat, LegumesNuts: Sprout, HerbsSpices: Leaf, Sauces: Utensils, Meals: Utensils, Desserts: Cookie, Drinks: Coffee, Snacks: Wheat, Other: Check };
 const blankEntry = (): FoodInput => ({ name: '', preference: 'like', category: 'Other', notes: '' });
 const messageOf = (error: unknown) => error instanceof Error ? error.message : 'Coś poszło nie tak. Spróbuj ponownie.';
 

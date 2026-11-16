@@ -1,12 +1,19 @@
 export type Preference = 'like' | 'dislike';
 
-export const FOOD_CATEGORIES = ['Vegetables', 'Fruit', 'Meals', 'Desserts', 'Drinks', 'Snacks', 'Other'] as const;
+export const FOOD_CATEGORIES = [
+  'Vegetables', 'Fruit', 'Meat', 'FishSeafood', 'DairyEggs',
+  'Grains', 'LegumesNuts', 'HerbsSpices', 'Sauces',
+  'Meals', 'Desserts', 'Drinks', 'Snacks', 'Other',
+] as const;
 export type FoodCategory = (typeof FOOD_CATEGORIES)[number];
 
 // Stable database values are independent of the interface language.
 export const CATEGORY_LABELS: Record<FoodCategory, string> = {
   Vegetables: 'Warzywa', Fruit: 'Owoce', Meals: 'Dania', Desserts: 'Desery',
   Drinks: 'Napoje', Snacks: 'Przekąski', Other: 'Inne',
+  Meat: 'Mięso', FishSeafood: 'Ryby i owoce morza', DairyEggs: 'Nabiał i jaja',
+  Grains: 'Produkty zbożowe', LegumesNuts: 'Strączki i orzechy',
+  HerbsSpices: 'Zioła i przyprawy', Sauces: 'Sosy i dodatki',
 };
 
 export interface FoodInput {

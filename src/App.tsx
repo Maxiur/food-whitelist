@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 're
 import { ArrowLeft, ArrowRight, Utensils, LockKeyhole, Mail, RefreshCw, ShieldCheck } from 'lucide-react';
 import Notebook from './components/Notebook';
 import { neonClient, type AppNeonClient } from './lib/neon';
-import { createCloudRepository, createDemoRepository, hasNotebookAccess } from './lib/repository';
+import { createCloudRepository, createDemoRepository, getNotebookOwnerId } from './lib/repository';
 import './auth.css';
 
 function AuthShell({ children }: { children: ReactNode }) {
@@ -73,20 +73,21 @@ function Login({ client }: { client: AppNeonClient }) {
       <button className="auth-text-button" disabled={busy} onClick={() => { setSent(false); setError(''); setOtp(''); setCooldown(0); }}><ArrowLeft size={14} /> Zmień adres</button>
       <button className="auth-text-button" disabled={busy || cooldown > 0} onClick={() => void sendCode()}>{cooldown > 0 ? `Wyślij ponownie za ${cooldown} s` : 'Wyślij nowy kod'}</button>
     </div>}
-    <p className="auth-privacy"><ShieldCheck size={17} /> Dostęp do wpisów ma tylko zatwierdzony właściciel.</p>
+    <p className="auth-privacy"><ShieldCheck size={17} /> Dostęp do wpisów mają tylko zatwierdzone konta.</p>
   </AuthShell>;
 }
 
 function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient; ownerId: string; userName?: string; email?: string }) {
   const [access, setAccess] = useState<boolean | null>(null);
+  const [notebookOwnerId, setNotebookOwnerId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [revision, setRevision] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
-  const repository = useMemo(() => createCloudRepository(client, ownerId), [client, ownerId]);
+  const repository = useMemo(() => notebookOwnerId ? createCloudRepository(client, notebookOwnerId) : null, [client, notebookOwnerId]);
   useEffect(() => {
     let cancelled = false;
-    setAccess(null); setError('');
-    hasNotebookAccess(client).then(value => { if (!cancelled) setAccess(value); }).catch(() => {
+    setAccess(null); setNotebookOwnerId(null); setError('');
+    getNotebookOwnerId(client).then(value => { if (!cancelled) { setNotebookOwnerId(value); setAccess(value !== null); } }).catch(() => {
       if (!cancelled) setError('Nie udało się sprawdzić dostępu. Sprawdź połączenie i spróbuj ponownie.');
     });
     return () => { cancelled = true; };
@@ -100,7 +101,7 @@ function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient;
     } finally { setSigningOut(false); }
   }
 
-  if (access) return <Notebook key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
+  if (access && repository) return <Notebook key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
   return <AuthShell>
     <div className="auth-card-icon"><LockKeyhole size={25} /></div>
     <p className="eyebrow">PRYWATNY NOTATNIK</p>

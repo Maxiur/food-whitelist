@@ -9,6 +9,9 @@ SELECT app_private.current_user_id();
 INSERT INTO app_private.allowed_owner (singleton, user_id)
 VALUES (1, '__food_whitelist_privacy_test_owner__')
 ON CONFLICT (singleton) DO UPDATE SET user_id = EXCLUDED.user_id;
+INSERT INTO app_private.notebook_member (singleton, user_id)
+VALUES (1, '__food_whitelist_privacy_test_member__')
+ON CONFLICT (singleton) DO UPDATE SET user_id = EXCLUDED.user_id;
 
 SET LOCAL request.jwt.claims = '{"sub":"__food_whitelist_privacy_test_owner__","role":"authenticated"}';
 SET LOCAL ROLE authenticated;
@@ -39,6 +42,40 @@ BEGIN
   END;
 END;
 $owner$;
+RESET ROLE;
+
+SET LOCAL request.jwt.claims = '{"sub":"__food_whitelist_privacy_test_member__","role":"authenticated"}';
+SET LOCAL ROLE authenticated;
+DO $member$
+DECLARE entry_id uuid; affected integer;
+BEGIN
+  IF public.get_notebook_owner_id() IS DISTINCT FROM '__food_whitelist_privacy_test_owner__' THEN
+    RAISE EXCEPTION 'Member did not resolve the shared notebook';
+  END IF;
+  UPDATE public.food_preferences SET notes = 'Shared edit' WHERE name = '__privacy_test__';
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 1 THEN RAISE EXCEPTION 'Member cannot edit owner entries'; END IF;
+  INSERT INTO public.food_preferences (name, preference, category)
+    VALUES ('__shared_ingredient_test__', 'like', 'Meat') RETURNING id INTO entry_id;
+  IF NOT EXISTS (SELECT 1 FROM public.food_preferences WHERE id = entry_id AND owner_id = '__food_whitelist_privacy_test_owner__') THEN
+    RAISE EXCEPTION 'Member insert was not assigned to the shared notebook';
+  END IF;
+  DELETE FROM public.food_preferences WHERE id = entry_id;
+  GET DIAGNOSTICS affected = ROW_COUNT;
+  IF affected <> 1 THEN RAISE EXCEPTION 'Member cannot delete'; END IF;
+  BEGIN
+    INSERT INTO public.food_preferences(owner_id, name, preference, category)
+      VALUES ('__food_whitelist_privacy_test_member__', 'Spoof', 'like', 'Meat');
+    RAISE EXCEPTION 'FAIL: member can write outside the shared notebook';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO app_private.notebook_member(user_id) VALUES ('__attacker__');
+    RAISE EXCEPTION 'FAIL: member can grant access';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END;
+$member$;
 RESET ROLE;
 
 SET LOCAL request.jwt.claims = '{"sub":"__food_whitelist_privacy_test_stranger__","role":"authenticated"}';
