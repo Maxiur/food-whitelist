@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowDownToLine, ArrowUpRight, Beef, BookOpen, Check, CheckCheck, ChevronDown, Cloud, Coffee, Cookie, Milk, Egg, Fish, Leaf, LoaderCircle, LockKeyhole, LogOut, MessageCircle, Pencil, Plus, RefreshCw, Search, Settings, Sprout, Trash2, Utensils, Wheat, X } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpRight, Pin, PinOff, Shuffle, Beef, BookOpen, Check, CheckCheck, ChevronDown, Cloud, Coffee, Cookie, Milk, Egg, Fish, Leaf, LoaderCircle, LockKeyhole, LogOut, MessageCircle, Pencil, Plus, RefreshCw, Search, Settings, Sprout, Trash2, Utensils, Wheat, X } from 'lucide-react';
 import EntryNotes from './EntryNotes';
 import { draftKey, readDraft, saveDraft, removeDraft } from '../lib/entry-draft';
 import { validateFoodInput } from '../lib/validation';
 import { filterFood } from '../lib/food-filter';
 import FoodFilters from './FoodFilters';
 import SettingsPanel from './SettingsPanel';
+import UndoNotice, { type UndoItem } from './UndoNotice';
+import { compareFood, pickFood } from '../lib/food-actions';
 import { CATEGORY_LABELS, FOOD_CATEGORIES, FOOD_KINDS, KIND_LABELS, SUGGESTED_TAGS, type FoodKind, type FoodCategory, type FoodEntry, type FoodInput, type NotebookProps, type Preference } from '../lib/types';
 
 function DairyEggIcon({ size = 21, strokeWidth = 1.5 }: { size?: number; strokeWidth?: number }) { return <span className="dairy-icon" style={{ width: size, height: size }}><Milk size={size * .8} strokeWidth={strokeWidth} /><Egg size={size * .6} strokeWidth={strokeWidth} /></span>; }
@@ -67,13 +69,13 @@ function DeleteDialog({ entry, onClose, onDelete }: { entry: FoodEntry; onClose:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   async function remove() { setBusy(true); setError(''); try { await onDelete(); } catch (failure) { setError(messageOf(failure)); } finally { setBusy(false); } }
-  return <Modal title="Usunąć ten wpis?" description={`„${entry.name}” zostanie usunięty z notatnika. Tej operacji nie można cofnąć.`} busy={busy} onClose={onClose} className="modal-small">
+  return <Modal title="Usunąć ten wpis?" description={`„${entry.name}” zostanie usunięty z notatnika. Po usunięciu przez 15 sekund będzie dostępny przycisk „Cofnij”.`} busy={busy} onClose={onClose} className="modal-small">
     {error && <p className="error-message" role="alert">{error}</p>}
     <div className="modal-actions"><button autoFocus type="button" className="button button-secondary" onClick={onClose} disabled={busy}>Zachowaj wpis</button><button type="button" className="button button-danger" onClick={() => void remove()} disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : <Trash2 size={17} />}{busy ? 'Usuwanie…' : 'Usuń wpis'}</button></div>
   </Modal>;
 }
 
-export default function Notebook({ repository, mode, userName, userEmail, onSignOut, renderPasswordSettings, draftScope = 'demo' }: NotebookProps) {
+export default function Notebook({ repository, mode, userName, userEmail, onSignOut, renderPasswordSettings, sharing, draftScope = 'demo' }: NotebookProps) {
   const [entries, setEntries] = useState<FoodEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -89,6 +91,11 @@ export default function Notebook({ repository, mode, userName, userEmail, onSign
   const [editing, setEditing] = useState<FoodEntry | null | undefined>(undefined);
   const [deleting, setDeleting] = useState<FoodEntry | null>(null);
   const [toast, setToast] = useState('');
+  const [undoItems, setUndoItems] = useState<UndoItem[]>([]);
+  const [pinning, setPinning] = useState<string[]>([]);
+  const [actionError, setActionError] = useState('');
+  const [randomId, setRandomId] = useState<string | null>(null);
+  const dismissUndo = useCallback((id: string) => setUndoItems(items => items.filter(item => item.id !== id)), []);
   const [signingOut, setSigningOut] = useState(false);
   const requests = useRef(0);
   const currentRepository = useRef(repository);
@@ -104,7 +111,7 @@ export default function Notebook({ repository, mode, userName, userEmail, onSign
     finally { if (request === requests.current && currentRepository.current === repository) setLoading(false); }
   }, [repository]);
   useEffect(() => {
-    setEntries([]); setLoaded(false); setError(''); setLastSynced(null); setEditing(undefined); setDeleting(null);
+    setEntries([]); setLoaded(false); setError(''); setLastSynced(null); setEditing(undefined); setDeleting(null); setUndoItems([]); setPinning([]); setActionError(''); setRandomId(null);
     void load();
     const onFocus = () => { if (document.visibilityState === 'visible') void load(); };
     window.addEventListener('focus', onFocus);
@@ -114,7 +121,9 @@ export default function Notebook({ repository, mode, userName, userEmail, onSign
 
   const counts = useMemo(() => ({ all: entries.length, like: entries.filter((entry) => entry.preference === 'like').length, dislike: entries.filter((entry) => entry.preference === 'dislike').length }), [entries]);
   const availableTags = useMemo(() => [...new Set([...entries.flatMap(entry => entry.tags || []), ...tags])].sort((a, b) => a.localeCompare(b, 'pl')), [entries, tags]);
-  const visible = useMemo(() => filterFood(entries, { query, preference, categories, kinds, tags }).sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name, 'pl') : b.updatedAt.localeCompare(a.updatedAt) || a.name.localeCompare(b.name, 'pl')), [entries, query, preference, categories, kinds, tags, sort]);
+  const visible = useMemo(() => filterFood(entries, { query, preference, categories, kinds, tags }).sort((a, b) => compareFood(a, b, sort)), [entries, query, preference, categories, kinds, tags, sort]);
+  const randomCandidates = visible.filter(entry => entry.preference === 'like' && entry.kind === 'dish');
+  const randomEntry = randomCandidates.find(entry => entry.id === randomId);
   const resetFilters = () => { setQuery(''); setPreference('all'); setCategories([]); setKinds([]); setTags([]); };
   const hasFilters = !!(query || preference !== 'all' || categories.length || kinds.length || tags.length);
   async function save(input: FoodInput) {
@@ -137,8 +146,30 @@ export default function Notebook({ repository, mode, userName, userEmail, onSign
       await repository.remove(id);
       if (currentRepository.current !== repository) return;
       ++requests.current; setLoading(false); setEntries((previous) => previous.filter((entry) => entry.id !== id));
-      setDeleting(null); setLastSynced(new Date()); setToast('Wpis usunięty.');
+      setUndoItems(items => [...items.filter(item => item.id !== id), { id, name: deleting.name, expiresAt: Date.now() + 15_000 }]);
+      setDeleting(null); setLastSynced(new Date());
     } catch (failure) { setLastSynced(null); throw failure; }
+  }
+  async function restore(id: string) {
+    ++requests.current; setLoading(false);
+    const restored = await repository.restore(id);
+    if (currentRepository.current !== repository) return;
+    ++requests.current; setLoading(false);
+    setEntries(previous => [restored, ...previous.filter(entry => entry.id !== id)]);
+    setLastSynced(new Date()); setToast('Wpis przywrócony.');
+  }
+  async function togglePin(entry: FoodEntry) {
+    if (pinning.includes(entry.id)) return;
+    setPinning(ids => [...ids, entry.id]); setActionError('');
+    ++requests.current; setLoading(false);
+    try {
+      const updated = await repository.setPinned(entry.id, !entry.pinned);
+      if (currentRepository.current !== repository) return;
+      ++requests.current; setLoading(false);
+      setEntries(previous => previous.map(item => item.id === updated.id ? updated : item));
+      setLastSynced(new Date());
+    } catch (failure) { if (currentRepository.current === repository) setActionError(messageOf(failure)); }
+    finally { if (currentRepository.current === repository) setPinning(ids => ids.filter(id => id !== entry.id)); }
   }
   function exportEntries() {
     const file = new Blob([JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), entries }, null, 2)], { type: 'application/json;charset=utf-8' });
@@ -169,19 +200,22 @@ export default function Notebook({ repository, mode, userName, userEmail, onSign
         <div className="filter-panel"><div className="search-field"><Search size={18} aria-hidden="true" /><label className="sr-only" htmlFor="search-food">Przeszukaj notatnik</label><input id="search-food" type="search" placeholder="Szukaj nazw, tagów, notatek…" value={query} onChange={(e) => setQuery(e.target.value)} /></div></div>
         <FoodFilters categories={categories} kinds={kinds} tags={tags} availableTags={availableTags} onCategories={setCategories} onKinds={setKinds} onTags={setTags} />
         {hasFilters && <div className="active-filters" aria-label="Aktywne filtry">{categories.map(value => <button type="button" key={value} onClick={() => setCategories(categories.filter(item => item !== value))}>{CATEGORY_LABELS[value]}<X size={13} aria-label="Usuń filtr" /></button>)}{kinds.map(value => <button type="button" key={value} onClick={() => setKinds(kinds.filter(item => item !== value))}>{KIND_LABELS[value]}<X size={13} aria-label="Usuń filtr" /></button>)}{tags.map(value => <button type="button" key={value} onClick={() => setTags(tags.filter(item => item !== value))}>#{value}<X size={13} aria-label="Usuń filtr" /></button>)}<button type="button" className="clear-filters" onClick={resetFilters}>Wyczyść wszystkie filtry</button></div>}
-        <div className="list-toolbar"><div className="filter-tabs" role="group" aria-label="Filtruj preferencje">{([['all', 'Wszystkie'], ['like', 'Lubi'], ['dislike', 'Nie lubi']] as const).map(([value, label]) => <button type="button" key={value} className={`filter-tab ${preference === value ? 'active' : ''} tab-${value}`} aria-pressed={preference === value} onClick={() => setPreference(value)}>{value === 'like' && <Check size={14} />}{value === 'dislike' && <X size={14} />}<span>{label}</span><span className="tab-count">{loaded ? counts[value] : '—'}</span></button>)}</div><div className="list-tools"><div className="select-wrap sort-select"><label className="sr-only" htmlFor="sort-food">Sortuj wpisy</label><select id="sort-food" value={sort} onChange={(e) => setSort(e.target.value as 'updated' | 'name')}><option value="updated">Ostatnio zmienione</option><option value="name">Alfabetycznie</option></select><ChevronDown size={14} aria-hidden="true" /></div><button type="button" className="icon-button" aria-label="Odśwież wpisy" title="Odśwież wpisy" disabled={loading} onClick={() => void load()}><RefreshCw size={16} className={loading ? 'spin' : ''} /></button><button type="button" className="icon-button" aria-label="Eksportuj wszystkie wpisy do JSON" title="Pobierz wszystkie wpisy (.json)" disabled={!entries.length || loading || !!error} onClick={exportEntries}><ArrowDownToLine size={17} /></button></div></div>
+        <div className="list-toolbar"><div className="filter-tabs" role="group" aria-label="Filtruj preferencje">{([['all', 'Wszystkie'], ['like', 'Lubi'], ['dislike', 'Nie lubi']] as const).map(([value, label]) => <button type="button" key={value} className={`filter-tab ${preference === value ? 'active' : ''} tab-${value}`} aria-pressed={preference === value} onClick={() => setPreference(value)}>{value === 'like' && <Check size={14} />}{value === 'dislike' && <X size={14} />}<span>{label}</span><span className="tab-count">{loaded ? counts[value] : '—'}</span></button>)}</div><div className="list-tools"><button type="button" className="icon-button" aria-label="Wylosuj danie" title={randomCandidates.length ? "Wylosuj lubiane danie z aktualnych wyników" : "Brak lubianych gotowych dań w aktualnych filtrach"} disabled={!canChange || !randomCandidates.length} onClick={() => setRandomId(pickFood(visible)?.id || null)}><Shuffle size={17} /></button><div className="select-wrap sort-select"><label className="sr-only" htmlFor="sort-food">Sortuj wpisy</label><select id="sort-food" value={sort} onChange={(e) => setSort(e.target.value as 'updated' | 'name')}><option value="updated">Ostatnio zmienione</option><option value="name">Alfabetycznie</option></select><ChevronDown size={14} aria-hidden="true" /></div><button type="button" className="icon-button" aria-label="Odśwież wpisy" title="Odśwież wpisy" disabled={loading} onClick={() => void load()}><RefreshCw size={16} className={loading ? 'spin' : ''} /></button><button type="button" className="icon-button" aria-label="Eksportuj wszystkie wpisy do JSON" title="Pobierz wszystkie wpisy (.json)" disabled={!entries.length || loading || !!error} onClick={exportEntries}><ArrowDownToLine size={17} /></button></div></div>
+        {actionError && <p className="error-message" role="alert">{actionError}</p>}
         {error && <div className="load-error" role="alert"><div><strong>Nie udało się wczytać notatnika.</strong><p>{error}</p>{loaded && <p>To wpisy z ostatniego udanego odświeżenia.</p>}</div><button type="button" className="button button-secondary" onClick={() => void load()} disabled={loading}><RefreshCw size={16} />Spróbuj ponownie</button></div>}
         {loading && !loaded ? <div className="loading-state" role="status"><LoaderCircle size={24} className="spin" /><p>Otwieranie notatnika…</p></div> : loaded && entries.length === 0 ? <div className="empty-state"><div className="empty-symbol"><Sprout size={37} strokeWidth={1.2} /><span>01</span></div><p className="eyebrow">PIERWSZY KROK</p><h3>Pierwszy wpis robi różnicę.</h3><p>Ulubione danie? Składnik do pominięcia?<br />Zapisz i miej to z głowy.</p><button type="button" className="button button-text" onClick={() => setEditing(null)} disabled={!canChange}>Dodaj pierwszy wpis <ArrowUpRight size={18} /></button></div> : loaded && visible.length === 0 ? <div className="empty-state empty-filter"><Search size={30} strokeWidth={1.4} /><h3>Brak pasujących wpisów.</h3><p>Zmień zapytanie albo wyczyść filtry.</p><button type="button" className="button button-secondary" onClick={resetFilters}>Wyczyść filtry</button></div> : <div className="food-grid">{visible.map((entry) => {
           const Icon = categoryIcons[entry.category] || Check;
-          return <article className={`food-card food-card-${entry.preference}`} key={entry.id}><div className="card-topline"><span className="category-icon"><Icon size={21} strokeWidth={1.5} /></span><span className={`preference-badge badge-${entry.preference}`}>{entry.preference === 'like' ? <Check size={12} /> : <X size={12} />}{entry.preference === 'like' ? 'Lubi' : 'Nie lubi'}</span></div><p className="card-category">{(entry.categories || [entry.category]).map(value => CATEGORY_LABELS[value]).join(' · ')}</p><h3>{entry.name}</h3>{((entry.kind && entry.kind !== 'unspecified') || !!entry.tags?.length) && <div className="entry-context">{entry.kind && entry.kind !== 'unspecified' && <span className="kind-badge">{KIND_LABELS[entry.kind]}</span>}{entry.tags?.map(tag => <button type="button" key={tag} title={`Filtruj tag: ${tag}`} onClick={() => setTags([tag])}>#{tag}</button>)}</div>}<EntryNotes text={entry.notes} /><footer className="card-footer"><span title={`Ostatnia zmiana: ${new Date(entry.updatedAt).toLocaleString('pl-PL')}`}>{new Date(entry.updatedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}</span><div><button type="button" className="icon-button" aria-label={`Edytuj: ${entry.name}`} title="Edytuj wpis" onClick={() => setEditing(entry)} disabled={!canChange}><Pencil size={16} /></button><button type="button" className="icon-button delete-icon" aria-label={`Usuń: ${entry.name}`} title="Usuń wpis" onClick={() => setDeleting(entry)} disabled={!canChange}><Trash2 size={16} /></button></div></footer></article>;
+          return <article className={`food-card food-card-${entry.preference} ${entry.pinned ? 'food-card-pinned' : ''}`} key={entry.id}><div className="card-topline"><span className="category-icon"><Icon size={21} strokeWidth={1.5} /></span><button type="button" className={`icon-button pin-button ${entry.pinned ? 'is-pinned' : ''}`} aria-pressed={!!entry.pinned} aria-label={`${entry.pinned ? 'Odepnij' : 'Przypnij'}: ${entry.name}`} title={entry.pinned ? 'Odepnij wpis' : 'Przypnij na górze listy'} onClick={() => void togglePin(entry)} disabled={!canChange || pinning.includes(entry.id)}>{entry.pinned ? <PinOff size={16} /> : <Pin size={16} />}</button><span className={`preference-badge badge-${entry.preference}`}>{entry.preference === 'like' ? <Check size={12} /> : <X size={12} />}{entry.preference === 'like' ? 'Lubi' : 'Nie lubi'}</span></div><p className="card-category">{(entry.categories || [entry.category]).map(value => CATEGORY_LABELS[value]).join(' · ')}</p><h3>{entry.name}</h3>{((entry.kind && entry.kind !== 'unspecified') || !!entry.tags?.length) && <div className="entry-context">{entry.kind && entry.kind !== 'unspecified' && <span className="kind-badge">{KIND_LABELS[entry.kind]}</span>}{entry.tags?.map(tag => <button type="button" key={tag} title={`Filtruj tag: ${tag}`} onClick={() => setTags([tag])}>#{tag}</button>)}</div>}<EntryNotes text={entry.notes} /><footer className="card-footer"><span title={`Ostatnia zmiana: ${new Date(entry.updatedAt).toLocaleString('pl-PL')}`}>{new Date(entry.updatedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })}</span><div><button type="button" className="icon-button" aria-label={`Edytuj: ${entry.name}`} title="Edytuj wpis" onClick={() => setEditing(entry)} disabled={!canChange || pinning.includes(entry.id)}><Pencil size={16} /></button><button type="button" className="icon-button delete-icon" aria-label={`Usuń: ${entry.name}`} title="Usuń wpis" onClick={() => setDeleting(entry)} disabled={!canChange || pinning.includes(entry.id)}><Trash2 size={16} /></button></div></footer></article>;
         })}</div>}
         {loaded && entries.length > 0 && <p className="results-note">Widoczne wpisy: {visible.length} z {entries.length} <span>·</span> Wszystkie szczegóły pod ręką.</p>}
       </section>
       <footer className="page-footer"><span>Food Whitelist<span className="footer-dot">·</span>Twój notatnik smaków</span><span><LockKeyhole size={12} />{mode === 'cloud' ? 'Dostęp prywatny' : 'Podgląd lokalny'}</span></footer>
     </main>
-    {settingsOpen && <Modal title="Ustawienia" eyebrow="TWÓJ NOTATNIK" onClose={() => setSettingsOpen(false)} className="settings-modal"><SettingsPanel userName={userName} email={userEmail} mode={mode} count={entries.length} canExport={!!entries.length && !loading && !error} onExport={exportEntries} renderPasswordSettings={renderPasswordSettings} /></Modal>}
+    {randomEntry && <Modal title="Może to?" eyebrow="MAŁA PODPOWIEDŹ" onClose={() => setRandomId(null)} className="modal-small"><div className="random-result"><p className="card-category">{(randomEntry.categories || [randomEntry.category]).map(category => CATEGORY_LABELS[category]).join(' · ')}</p><h3>{randomEntry.name}</h3><EntryNotes text={randomEntry.notes} />{randomEntry.tags?.length ? <p>{randomEntry.tags.map(tag => `#${tag}`).join(' · ')}</p> : null}<small>Losowanie spośród lubianych gotowych dań pasujących do filtrów.</small></div><div className="modal-actions"><button type="button" className="button button-secondary" onClick={() => setRandomId(null)}>Zamknij</button><button type="button" className="button button-primary" disabled={randomCandidates.length < 2} onClick={() => setRandomId(pickFood(visible, randomId || undefined)?.id || null)}><Shuffle size={16} />Losuj jeszcze raz</button></div></Modal>}
+    {settingsOpen && <Modal title="Ustawienia" eyebrow="TWÓJ NOTATNIK" onClose={() => setSettingsOpen(false)} className="settings-modal"><SettingsPanel sharing={sharing} userName={userName} email={userEmail} mode={mode} count={entries.length} canExport={!!entries.length && !loading && !error} onExport={exportEntries} renderPasswordSettings={renderPasswordSettings} /></Modal>}
     {editing !== undefined && <EntryEditor scope={draftScope} key={editing?.id || 'new'} entry={editing} onClose={() => setEditing(undefined)} onSave={save} />}
     {deleting && <DeleteDialog entry={deleting} onClose={() => setDeleting(null)} onDelete={remove} />}
-    {toast && <div className="toast" role="status"><span><Check size={17} /></span>{toast}<button type="button" className="icon-button" aria-label="Zamknij powiadomienie" onClick={() => setToast('')}><X size={16} /></button></div>}
+    {!!undoItems.length && <div className="undo-stack">{undoItems.map(item => <UndoNotice key={item.id} item={item} onUndo={restore} onDismiss={dismissUndo} />)}</div>}
+    {toast && <div className={`toast ${undoItems.length ? 'toast-with-undo' : ''}`} role="status"><span><Check size={17} /></span>{toast}<button type="button" className="icon-button" aria-label="Zamknij powiadomienie" onClick={() => setToast('')}><X size={16} /></button></div>}
   </div>;
 }

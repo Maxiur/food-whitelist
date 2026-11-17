@@ -36,6 +36,7 @@ export interface FoodInput {
 
 export interface FoodEntry extends FoodInput {
   id: string;
+  pinned?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -45,6 +46,8 @@ export interface FoodRepository {
   create(input: FoodInput): Promise<FoodEntry>;
   update(id: string, input: FoodInput): Promise<FoodEntry>;
   remove(id: string): Promise<void>;
+  restore(id: string): Promise<FoodEntry>;
+  setPinned(id: string, pinned: boolean): Promise<FoodEntry>;
 }
 
 export interface NotebookProps {
@@ -54,5 +57,13 @@ export interface NotebookProps {
   draftScope?: string;
   userEmail?: string;
   renderPasswordSettings?: (onBack: () => void) => import('react').ReactNode;
+  sharing?: SharingRepository;
   onSignOut?: () => Promise<void>;
+}
+
+export type SharingState = { role: 'member' } | { role: 'owner'; email: string | null; status: 'empty' | 'pending' | 'active'; legacyMember: boolean };
+export interface SharingRepository {
+  get(): Promise<SharingState>;
+  invite(email: string): Promise<void>;
+  revoke(email: string): Promise<void>;
 }

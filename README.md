@@ -9,6 +9,10 @@ A private food preference notebook. Record foods and ingredients, mark them as l
 - Independent entry type (ingredient, prepared dish, or unclassified) and up to eight context tags. Existing entries remain unclassified until edited.
 - Combine multi-select category, type and tag filters. Selections within a group use OR; different groups use AND. Click a tag on a card to filter by it.
 - Account settings keep password management and a full JSON export in one panel, without leaving the notebook or resetting filters.
+- Pin entries to the top of the filtered list, independently of the selected sort order. Pins are shared between devices and collaborators.
+- Undo each deletion for 15 seconds. Restoration preserves the entry ID, content and pin; deleted rows are hidden from normal reads.
+- A compact shuffle control picks a liked prepared dish from the current results and avoids immediately repeating it when alternatives exist.
+- The owner can approve one collaborator email and revoke it in Settings. Share the site link manually; invitation emails are not sent automatically. A collaborator must verify the approved email through Neon Auth.
 - Tab-scoped drafts survive dialog closure and page reloads. Save or explicitly discard a draft to clear it; drafts are not synced between devices.
 - Long notes can be expanded and scrolled; empty notes are omitted.
 - Categories, accent-insensitive search, filters and sorting.

@@ -11,7 +11,7 @@ HTMLDialogElement.prototype.close = function () { this.open = false; };
 it('keeps multi-select filters while opening password settings and returning to the notebook', async () => {
   const element = document.createElement('div'); document.body.append(element);
   const root = createRoot(element);
-  const repository: FoodRepository = { list: vi.fn().mockResolvedValue([]), create: vi.fn(), update: vi.fn(), remove: vi.fn() };
+  const repository: FoodRepository = { list: vi.fn().mockResolvedValue([]), create: vi.fn(), update: vi.fn(), remove: vi.fn(), restore: vi.fn(), setPinned: vi.fn() };
   const clickButton = async (text: string) => {
     const button = [...element.querySelectorAll('button')].find(item => item.textContent === text || item.getAttribute('aria-label') === text)!;
     expect(button).toBeTruthy(); await act(async () => button.click());

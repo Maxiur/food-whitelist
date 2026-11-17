@@ -4,6 +4,7 @@ import Notebook from './components/Notebook';
 import PasswordForm from './components/PasswordForm';
 import { neonClient, type AppNeonClient } from './lib/neon';
 import { createCloudRepository, createDemoRepository, getNotebookOwnerId } from './lib/repository';
+import { createSharingRepository } from './lib/sharing';
 import { clearPendingLogin, readPendingLogin, resendCooldown, savePendingLogin } from './lib/pending-login';
 import './auth.css';
 
@@ -105,6 +106,7 @@ function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient;
   const [revision, setRevision] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
   const repository = useMemo(() => notebookOwnerId ? createCloudRepository(client, notebookOwnerId) : null, [client, notebookOwnerId]);
+  const sharing = useMemo(() => createSharingRepository(client), [client]);
   useEffect(() => {
     let cancelled = false;
     setAccess(null); setNotebookOwnerId(null); setError('');
@@ -122,7 +124,7 @@ function SignedIn({ client, ownerId, userName, email }: { client: AppNeonClient;
     } finally { setSigningOut(false); }
   }
 
-  if (access && repository) return <Notebook draftScope={ownerId} userEmail={email} renderPasswordSettings={onBack => <PasswordForm client={client} initialEmail={email} setup embedded onBack={onBack} />} key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
+  if (access && repository) return <Notebook sharing={sharing} draftScope={ownerId} userEmail={email} renderPasswordSettings={onBack => <PasswordForm client={client} initialEmail={email} setup embedded onBack={onBack} />} key={ownerId} repository={repository} mode="cloud" userName={userName || email?.split('@')[0]} onSignOut={signOut} />;
   return <AuthShell>
     <div className="auth-card-icon"><LockKeyhole size={25} /></div>
     <p className="eyebrow">PRYWATNY NOTATNIK</p>

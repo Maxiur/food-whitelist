@@ -2,7 +2,7 @@ import type { AppNeonClient } from './neon';
 import type { FoodEntry, FoodInput, FoodRepository } from './types';
 import { validateFoodInput } from './validation';
 
-const COLUMNS = 'id,name,preference,category,categories,kind,tags,notes,created_at,updated_at';
+const COLUMNS = 'id,name,preference,category,categories,kind,tags,pinned,notes,created_at,updated_at';
 export const DEMO_STORAGE_KEY = 'food-whitelist:demo:food:v1';
 
 export async function getNotebookOwnerId(client: AppNeonClient): Promise<string | null> {
@@ -21,7 +21,8 @@ function validEntry(value: unknown): FoodEntry {
       typeof record.updatedAt !== 'string' || !Number.isFinite(Date.parse(record.updatedAt))) {
     throw new Error('Zapisany wpis ma nieprawidłowy format.');
   }
-  return { ...fields, id: record.id, createdAt: record.createdAt, updatedAt: record.updatedAt };
+  if (record.pinned !== undefined && typeof record.pinned !== 'boolean') throw new Error('Nieprawidłowe przypięcie wpisu.');
+  return { ...fields, pinned: record.pinned === true, id: record.id, createdAt: record.createdAt, updatedAt: record.updatedAt };
 }
 
 function fromRow(row: unknown): FoodEntry {
@@ -39,6 +40,7 @@ function databaseError(error: { code?: string; message?: string } | null): void 
     throw new Error('Sesja wygasła. Zaloguj się ponownie.');
   }
   if (error.code === '23505') throw new Error('Ten wpis już istnieje. Odśwież listę.');
+  if (error.code === 'P0002') throw new Error('Wpis jest już niedostępny. Odśwież listę i spróbuj ponownie.');
   // Do not leak raw database responses, which can include row contents.
   throw new Error('Nie udało się połączyć z bazą. Sprawdź połączenie i spróbuj ponownie.');
 }
@@ -77,13 +79,23 @@ export function createCloudRepository(client: AppNeonClient, ownerId: string): F
       if (!data) throw new Error('Nie znaleziono wpisu. Odśwież listę i spróbuj ponownie.');
       return fromRow(data);
     },
-    async remove(id) {
-      const { data, error } = await client.from('food_preferences')
-        .delete().eq('id', id).eq('owner_id', ownerId).select('id');
+    async setPinned(id, pinned) {
+      const { data, error } = await client.from('food_preferences').update({ pinned })
+        .eq('id', id).eq('owner_id', ownerId).select(COLUMNS).single();
       databaseError(error);
-      if (!Array.isArray(data) || data.length !== 1) {
-        throw new Error('Usunięcie nie zostało potwierdzone. Odśwież listę.');
-      }
+      if (!data) throw new Error('Nie znaleziono wpisu. Odśwież listę.');
+      return fromRow(data);
+    },
+    async remove(id) {
+      const { error } = await client.rpc('remove_food_entry', { entry_id: id });
+      databaseError(error);
+    },
+    async restore(id) {
+      const { data, error } = await client.rpc('restore_food_entry', { entry_id: id });
+      if (error?.code === 'P0002') throw new Error('Minął czas na cofnięcie lub wpis jest już niedostępny.');
+      databaseError(error);
+      if (!Array.isArray(data) || data.length !== 1) throw new Error('Nie potwierdzono przywrócenia wpisu. Odśwież listę.');
+      return fromRow(data[0]);
     },
   };
 }
@@ -100,13 +112,18 @@ export function createDemoRepository(options: DemoOptions = {}): FoodRepository 
   const storage = () => options.storage ?? window.localStorage;
   const now = options.now ?? (() => new Date());
   const makeId = options.makeId ?? (() => crypto.randomUUID());
-  function read(): FoodEntry[] {
+  type StoredEntry = FoodEntry & { deletedAt?: string };
+  function read(): StoredEntry[] {
     try {
       const raw = storage().getItem(DEMO_STORAGE_KEY);
       if (raw === null) return [];
       const decoded: unknown = JSON.parse(raw);
       if (!Array.isArray(decoded)) throw new Error('Invalid local format');
-      return decoded.map(validEntry);
+      return decoded.map(value => {
+        const entry = validEntry(value);
+        if (value.deletedAt !== undefined && (typeof value.deletedAt !== 'string' || !Number.isFinite(Date.parse(value.deletedAt)))) throw new Error('Invalid deletion timestamp');
+        return { ...entry, ...(value.deletedAt ? { deletedAt: value.deletedAt } : {}) };
+      });
     } catch {
       throw new Error('Nie można odczytać danych podglądu. Sprawdź dostęp do pamięci przeglądarki.');
     }
@@ -119,11 +136,11 @@ export function createDemoRepository(options: DemoOptions = {}): FoodRepository 
     }
   }
   return {
-    async list() { return read(); },
+    async list() { return read().filter(entry => !entry.deletedAt); },
     async create(input) {
       const fields = validateFoodInput(input);
       const timestamp = now().toISOString();
-      const entry = { ...fields, id: makeId(), createdAt: timestamp, updatedAt: timestamp };
+      const entry = { ...fields, id: makeId(), pinned: false, createdAt: timestamp, updatedAt: timestamp };
       const entries = read();
       write([entry, ...entries]);
       return entry;
@@ -131,17 +148,31 @@ export function createDemoRepository(options: DemoOptions = {}): FoodRepository 
     async update(id, input) {
       const fields = validateFoodInput(input);
       const entries = read();
-      const index = entries.findIndex(entry => entry.id === id);
+      const index = entries.findIndex(entry => entry.id === id && !entry.deletedAt);
       if (index < 0) throw new Error('Nie znaleziono wpisu. Odśwież listę.');
       const updated = { ...entries[index], ...fields, updatedAt: now().toISOString() };
       entries[index] = updated;
       write(entries);
       return updated;
     },
+    async setPinned(id, pinned) {
+      const entries = read();
+      const index = entries.findIndex(entry => entry.id === id && !entry.deletedAt);
+      if (index < 0) throw new Error('Nie znaleziono wpisu. Odśwież listę.');
+      const updated = { ...entries[index], pinned, updatedAt: now().toISOString() };
+      entries[index] = updated; write(entries); return updated;
+    },
     async remove(id) {
       const entries = read();
-      if (!entries.some(entry => entry.id === id)) throw new Error('Nie znaleziono wpisu. Odśwież listę.');
-      write(entries.filter(entry => entry.id !== id));
+      if (!entries.some(entry => entry.id === id && !entry.deletedAt)) throw new Error('Nie znaleziono wpisu. Odśwież listę.');
+      write(entries.map(entry => entry.id === id ? { ...entry, deletedAt: now().toISOString() } : entry));
+    },
+    async restore(id) {
+      const entries = read();
+      const index = entries.findIndex(entry => entry.id === id && entry.deletedAt && now().getTime() - Date.parse(entry.deletedAt) <= 60_000);
+      if (index < 0) throw new Error('Minął czas na cofnięcie lub wpis jest już niedostępny.');
+      const { deletedAt: _deletedAt, ...restored } = entries[index];
+      entries[index] = restored; write(entries); return restored;
     },
   };
 }
